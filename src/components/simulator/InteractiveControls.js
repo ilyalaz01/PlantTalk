@@ -1,6 +1,6 @@
 // src/components/simulator/InteractiveControls.js
-import React from 'react';
-import styled from 'styled-components';
+import React, { useContext } from 'react';
+import styled, { ThemeContext } from 'styled-components';
 
 const ControlsContainer = styled.div`
   background-color: ${({ theme }) => theme.colors.surface};
@@ -161,18 +161,19 @@ const getUnit = (type) => {
   }
 };
 
-const getStatusColors = (theme) => ({
-  low: theme.colors.status.danger,
-  optimal: theme.colors.status.healthy,
-  high: theme.colors.status.warning
-});
-
 const InteractiveControls = ({ values, onChange }) => {
+  // Use the ThemeContext directly from styled-components
+  const theme = useContext(ThemeContext);
+  
   const handleSliderChange = (type, value) => {
     onChange(type, parseInt(value, 10));
   };
   
-  const statusColors = getStatusColors(useTheme());
+  const statusColors = {
+    low: theme.colors.status.danger,
+    optimal: theme.colors.status.healthy,
+    high: theme.colors.status.warning
+  };
   
   return (
     <ControlsContainer>
@@ -379,10 +380,5 @@ const InteractiveControls = ({ values, onChange }) => {
     </ControlsContainer>
   );
 };
-
-// Workaround to use theme in a statically defined object
-function useTheme() {
-  return React.useContext(styled.ThemeContext);
-}
 
 export default InteractiveControls;

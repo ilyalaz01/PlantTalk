@@ -1,9 +1,10 @@
 // src/components/dashboard/ActionButton.js
 import React, { useState } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { usePlant } from '../../contexts/PlantContext';
 import { useSensor } from '../../contexts/SensorContext';
 
+// Define keyframes at the top of the file
 const pulse = keyframes`
   0% {
     transform: scale(1);
@@ -34,6 +35,17 @@ const splash = keyframes`
   100% {
     opacity: 0;
     transform: scale(1.5);
+  }
+`;
+
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 `;
 
@@ -70,7 +82,7 @@ const StyledButton = styled.button`
   justify-content: center;
   gap: ${({ theme }) => theme.spacing.sm};
   
-  ${({ urgent, theme }) => urgent && `
+  ${({ urgent }) => urgent && css`
     animation: ${pulse} 2s infinite;
   `}
   
@@ -133,17 +145,6 @@ const FeedbackMessage = styled.div`
   text-align: center;
   animation: ${fadeIn} 0.3s ease-out;
   max-width: 300px;
-`;
-
-const fadeIn = keyframes`
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 `;
 
 const ActionButton = () => {

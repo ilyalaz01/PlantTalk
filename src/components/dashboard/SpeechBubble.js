@@ -1,6 +1,6 @@
 // src/components/dashboard/SpeechBubble.js
 import React, { useState, useEffect } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { usePlant } from '../../contexts/PlantContext';
 import { useSensor } from '../../contexts/SensorContext';
 
@@ -29,7 +29,7 @@ const blinkCaret = keyframes`
     border-color: transparent;
   }
   50% {
-    border-color: ${({ theme }) => theme.colors.primary};
+    border-color: ${props => props.theme.colors.primary};
   }
 `;
 
@@ -85,7 +85,7 @@ const BubbleText = styled.div`
   color: ${({ theme }) => theme.colors.text.primary};
   min-height: 3em;
   
-  ${({ typing }) => typing && `
+  ${({ typing, theme }) => typing && css`
     white-space: nowrap;
     overflow: hidden;
     width: 0;

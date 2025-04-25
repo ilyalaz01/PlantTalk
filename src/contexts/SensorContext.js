@@ -1,6 +1,6 @@
 // src/contexts/SensorContext.js
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { fetchSensorData } from '../services/sensorService';
+import { fetchSensorData, fetchSensorHistory } from '../services/sensorService';
 import { usePlant } from './PlantContext';
 
 const SensorContext = createContext();
@@ -39,11 +39,11 @@ export const SensorProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   // Function to fetch latest sensor data
-  const refreshSensorData = async () => {
+  const refreshSensorData = () => {
     try {
       setLoading(true);
       
-      // In a real application, this would fetch from a sensor API
+      // In a real application, this would fetch from an API
       // const data = await fetchSensorData();
       // setSensorData(data);
       
@@ -117,6 +117,7 @@ export const SensorProvider = ({ children }) => {
   };
 
   // Set up regular refresh of sensor data
+  // FIXED: Removed sensorData values from dependency array to prevent infinite loop
   useEffect(() => {
     refreshSensorData();
     
@@ -125,7 +126,7 @@ export const SensorProvider = ({ children }) => {
     }, 30000); // Refresh every 30 seconds for demo
     
     return () => clearInterval(interval);
-  }, [sensorData.soilMoisture, sensorData.temperature, sensorData.humidity, sensorData.light]);
+  }, []); // Empty dependency array means this only runs once on mount
 
   // Value object to be provided to consumers
   const value = {
@@ -140,3 +141,5 @@ export const SensorProvider = ({ children }) => {
 
   return <SensorContext.Provider value={value}>{children}</SensorContext.Provider>;
 };
+
+export default SensorContext;
