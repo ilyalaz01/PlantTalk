@@ -16,40 +16,47 @@ export const useSensor = () => {
 export const SensorProvider = ({ children }) => {
   const { updatePlantStatus } = usePlant();
   
+  // Initial mock state (will be replaced by real sensor data soon)
   const [sensorData, setSensorData] = useState({
-    soilMoisture: 45, // percentage
-    temperature: 72, // Fahrenheit
-    humidity: 55, // percentage
-    light: 65, // percentage
+    soilMoisture: 45,      // %
+    temperature: 22,       // °C
+    humidity: 55,          // %
+    light: 65,             // %
     lastUpdated: new Date(),
   });
   
+  // Mock history (replace with fetchSensorHistory for real data)
   const [sensorHistory, setSensorHistory] = useState([
-    // Initial history data - in a real app this would come from an API
-    { timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), soilMoisture: 75, temperature: 72, humidity: 60, light: 70 },
-    { timestamp: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), soilMoisture: 68, temperature: 73, humidity: 58, light: 65 },
-    { timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), soilMoisture: 60, temperature: 74, humidity: 55, light: 60 },
-    { timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), soilMoisture: 52, temperature: 73, humidity: 54, light: 68 },
-    { timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), soilMoisture: 82, temperature: 71, humidity: 57, light: 72 },
-    { timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), soilMoisture: 75, temperature: 70, humidity: 59, light: 70 },
-    { timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), soilMoisture: 65, temperature: 72, humidity: 56, light: 65 },
+    { timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), soilMoisture: 75, temperature: 22, humidity: 60, light: 70 },
+    { timestamp: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), soilMoisture: 68, temperature: 23, humidity: 58, light: 65 },
+    { timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), soilMoisture: 60, temperature: 24, humidity: 55, light: 60 },
+    { timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), soilMoisture: 52, temperature: 23, humidity: 54, light: 68 },
+    { timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), soilMoisture: 82, temperature: 21, humidity: 57, light: 72 },
+    { timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), soilMoisture: 75, temperature: 20, humidity: 59, light: 70 },
+    { timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), soilMoisture: 65, temperature: 22, humidity: 56, light: 65 },
   ]);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Function to fetch latest sensor data
-  const refreshSensorData = () => {
+  // Fetch latest sensor data (mock or real)
+  const refreshSensorData = async () => {
     try {
       setLoading(true);
       
-      // In a real application, this would fetch from an API
+      // Uncomment when real API is ready:
       // const data = await fetchSensorData();
-      // setSensorData(data);
+      // setSensorData({
+      //   soilMoisture: data.soilMoisture,
+      //   temperature: data.temperature, // already in °C
+      //   humidity: data.humidity,
+      //   light: data.light,
+      //   lastUpdated: new Date(data.timestamp),
+      // });
       
-      // For demo purposes, simulate changing sensor values
+      // --- MOCK: simulate sensor changes ---
       const newSoilMoisture = Math.max(5, sensorData.soilMoisture - Math.random() * 2);
-      const newTemperature = sensorData.temperature + (Math.random() * 2 - 1);
+      const newTemperature = sensorData.temperature + (Math.random() * 1 - 0.5);
       const newHumidity = Math.max(30, Math.min(80, sensorData.humidity + (Math.random() * 3 - 1.5)));
       const newLight = Math.max(10, Math.min(90, sensorData.light + (Math.random() * 5 - 2.5)));
       
@@ -63,72 +70,54 @@ export const SensorProvider = ({ children }) => {
       
       setSensorData(newData);
       
-      // Add to history every few hours
-      const lastHistoryTimestamp = sensorHistory[0]?.timestamp;
-      if (!lastHistoryTimestamp || (new Date() - lastHistoryTimestamp) > 3 * 60 * 60 * 1000) {
-        setSensorHistory(prev => [
-          { ...newData, timestamp: new Date() },
-          ...prev
-        ]);
+      // Append to history every 3+ hours
+      const lastHistory = sensorHistory[0]?.timestamp;
+      if (!lastHistory || (new Date() - lastHistory) > 3 * 60 * 60 * 1000) {
+        setSensorHistory(prev => [{ ...newData, timestamp: new Date() }, ...prev]);
       }
       
-      // Update plant status based on new sensor data
+      // Update plant status
       updatePlantStatus(newData);
-      
       setLoading(false);
     } catch (err) {
-      setError('Could not fetch sensor data');
+      setError('לא ניתן לעדכן נתוני חיישן');
       setLoading(false);
     }
   };
 
-  // Calculate derived values
+  // Determine sensor trends
   const getSensorTrends = () => {
     if (sensorHistory.length < 2) return { soilMoisture: 'stable', temperature: 'stable', humidity: 'stable', light: 'stable' };
-    
-    const current = sensorHistory[0];
-    const previous = sensorHistory[1];
-    
+    const [current, previous] = sensorHistory;
     return {
       soilMoisture: getTrend(current.soilMoisture, previous.soilMoisture),
       temperature: getTrend(current.temperature, previous.temperature),
       humidity: getTrend(current.humidity, previous.humidity),
-      light: getTrend(current.light, previous.light)
+      light: getTrend(current.light, previous.light),
     };
   };
-  
-  const getTrend = (current, previous) => {
-    const diff = current - previous;
-    if (Math.abs(diff) < 3) return 'stable';
+  const getTrend = (curr, prev) => {
+    const diff = curr - prev;
+    if (Math.abs(diff) < 1) return 'stable';
     return diff > 0 ? 'rising' : 'falling';
   };
 
+  // Predict days until soil moisture hits critical level (25%)
   const calculateSoilMoistureDepletion = () => {
-    // Implement mechanistic model: dM/dt = -k · (T - Tbase) · (1 - H/100)
-    const k = 0.1; // Coefficient depending on soil type
-    const tBase = 50; // Base temperature in Fahrenheit
-    
+    const k = 0.1;       // soil coefficient
+    const tBase = 10;    // base temp in °C
     const depletionRate = -k * (sensorData.temperature - tBase) * (1 - sensorData.humidity / 100);
-    
-    // Predict days until soil moisture reaches critical level (25%)
-    const daysUntilCritical = (sensorData.soilMoisture - 25) / (-depletionRate * 24);
-    
-    return Math.max(0, Math.round(daysUntilCritical * 10) / 10);
+    const days = (sensorData.soilMoisture - 25) / (-depletionRate * 24);
+    return Math.max(0, Math.round(days * 10) / 10);
   };
 
-  // Set up regular refresh of sensor data
-  // FIXED: Removed sensorData values from dependency array to prevent infinite loop
+  // Auto-refresh on mount and interval
   useEffect(() => {
     refreshSensorData();
-    
-    const interval = setInterval(() => {
-      refreshSensorData();
-    }, 30000); // Refresh every 30 seconds for demo
-    
+    const interval = setInterval(refreshSensorData, 30000);
     return () => clearInterval(interval);
-  }, []); // Empty dependency array means this only runs once on mount
+  }, []);
 
-  // Value object to be provided to consumers
   const value = {
     sensorData,
     sensorHistory,

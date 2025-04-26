@@ -12,6 +12,15 @@ export const usePlant = () => {
   return context;
 };
 
+const normalizeSensorValue = (type, value) => {
+  if (type === 'temperature') {
+    const clamped = Math.min(Math.max(value, 0), 40); // 0°C - 40°C normalized
+    return (clamped / 40) * 100;
+  }
+  return value; // For moisture, humidity, light, no change
+};
+
+
 export const PlantProvider = ({ children }) => {
   const [plant, setPlant] = useState({
     id: 1,
@@ -21,9 +30,9 @@ export const PlantProvider = ({ children }) => {
     status: 'healthy', // healthy, thirsty, cold, hot, etc.
     lastWatered: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
     careSchedule: {
-      watering: 'every 3 days',
+      watering: 'every 2 days',
       sunlight: 'indirect light',
-      optimalTemperature: '65-75°F',
+      optimalTemperature: '18-24°C',
       optimalHumidity: '50-60%',
     },
     streak: 7, // Days in a row with proper care
@@ -79,22 +88,30 @@ export const PlantProvider = ({ children }) => {
   // Function to update plant status based on sensor data
   const updatePlantStatus = (sensorData) => {
     let newStatus = 'healthy';
-    
+  
     if (sensorData.soilMoisture < 30) {
       newStatus = 'thirsty';
-    } else if (sensorData.temperature < 60) {
+    } else if (sensorData.temperature < 17) {
       newStatus = 'cold';
-    } else if (sensorData.temperature > 80) {
+    } else if (sensorData.temperature > 27) {
       newStatus = 'hot';
     } else if (sensorData.humidity < 40) {
       newStatus = 'dry';
     }
-    
+  
     setPlant(prev => ({
       ...prev,
-      status: newStatus
+      status: newStatus,
+      sensorData: {
+        soilMoisture: sensorData.soilMoisture,
+        humidity: sensorData.humidity,
+        temperature: sensorData.temperature,
+        normalizedTemperature: normalizeSensorValue('temperature', sensorData.temperature),
+        light: sensorData.light,
+      },
     }));
   };
+  
 
   // Function to record plant care actions
   const recordCareAction = (action) => {

@@ -45,27 +45,62 @@ const FeedbackText = styled.p`
   margin: 0;
 `;
 
+
+const feedbackConditions = [
+  { 
+    condition: (sensor) => sensor.soilMoisture < 30, 
+    message: (sensor) => `Low soil moisture (${sensor.soilMoisture}%). Plants wilt when they can't maintain water pressure in their cells.` 
+  },
+  { 
+    condition: (sensor) => sensor.soilMoisture > 70, 
+    message: (sensor) => `Excessively wet soil (${sensor.soilMoisture}%) can cause root rot. Roots need oxygen to survive!`
+  },
+  { 
+    condition: (sensor) => sensor.temperature < 17, 
+    message: (sensor) => `Cold temperature detected (${sensor.temperature}°C). Growth slows down and leaves may drop.`
+  },
+  { 
+    condition: (sensor) => sensor.temperature > 27, 
+    message: (sensor) => `High temperature (${sensor.temperature}°C). Plants lose water faster and might wilt.`
+  },
+  { 
+    condition: (sensor) => sensor.humidity < 40, 
+    message: (sensor) => `Low humidity (${sensor.humidity}%). Leaves may brown at the tips and edges.`
+  },
+  { 
+    condition: (sensor) => sensor.light < 30, 
+    message: (sensor) => `Low light detected (${sensor.light}%). The plant may grow leggy and weak.`
+  },
+  { 
+    condition: (sensor) => sensor.light > 80, 
+    message: (sensor) => `Too much light (${sensor.light}%). Leaves might burn if exposed too long.`
+  },
+];
+
+
+
 const SimulationDisplay = ({ simulatedPlant, simulatedSensor }) => {
-  // Generate educational feedback based on the current plant state
   const generateFeedback = () => {
-    if (simulatedSensor.soilMoisture < 30) {
-      return "Low soil moisture causes the plant to wilt and droop. When plants don't have enough water, they can't maintain turgidity in their cells, leading to wilting. Extended periods of drought can damage or kill plants.";
-    } else if (simulatedSensor.soilMoisture > 70) {
-      return "Excessively wet soil can lead to root rot, as roots need oxygen to function properly. When soil is waterlogged, oxygen can't reach the roots, leading to stress and potential fungal problems.";
-    } else if (simulatedSensor.temperature < 65) {
-      return "Cold temperatures slow plant metabolism and growth. Many indoor plants are tropical in origin and prefer temperatures above 65°F. Cold stress can cause leaf drop and dormancy.";
-    } else if (simulatedSensor.temperature > 75) {
-      return "High temperatures increase water loss through transpiration, potentially leading to heat stress. Plants may wilt even with adequate soil moisture if temperatures are too high.";
-    } else if (simulatedSensor.humidity < 40) {
-      return "Low humidity causes increased water loss through leaves, leading to browning leaf tips and edges. Many houseplants evolved in tropical areas with high humidity and struggle in dry indoor air.";
-    } else if (simulatedSensor.light < 30) {
-      return "Insufficient light reduces photosynthesis, causing plants to grow leggy as they stretch toward light sources. Leaves may become smaller and growth slows significantly.";
-    } else if (simulatedSensor.light > 80) {
-      return "Excessive direct light can cause leaf burn and stress in plants adapted to filtered light. The equivalent of sunburn in plants can damage leaf tissue permanently.";
-    } else {
-      return "Your plant is in optimal conditions! Notice how it displays healthy growth and vibrant color. The balance of water, light, temperature, and humidity is creating an ideal environment for your plant to thrive.";
+    const triggeredMessages = [];
+
+    for (const feedback of feedbackConditions) {
+      if (feedback.condition(simulatedSensor)) {
+        triggeredMessages.push(feedback.message(simulatedSensor));
+      }
     }
+
+    if (triggeredMessages.length === 0) {
+      return "Your plant is in optimal conditions! All values are within healthy ranges.";
+    }
+
+    let intro = "Your plant needs attention! ";
+    let problems = triggeredMessages.join(" Also, ");
+    let advice = " Please address these issues to help your plant thrive.";
+    
+    return intro + problems + advice;
   };
+  
+
   
   return (
     <DisplayContainer>

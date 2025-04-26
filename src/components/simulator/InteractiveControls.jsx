@@ -129,8 +129,8 @@ const getStatus = (type, value) => {
       return 'optimal';
       
     case 'temperature':
-      if (value < 65) return 'low';
-      if (value > 75) return 'high';
+      if (value < 17) return 'low';
+      if (value > 27) return 'high';
       return 'optimal';
       
     case 'humidity':
@@ -155,7 +155,7 @@ const getUnit = (type) => {
     case 'light':
       return '%';
     case 'temperature':
-      return '°F';
+      return '°C';
     default:
       return '';
   }
@@ -241,7 +241,7 @@ const InteractiveControls = ({ values, onChange }) => {
         <SliderInput
           id="temperature-slider"
           type="range"
-          min="40"
+          min="0"
           max="100"
           value={values.temperature}
           onChange={(e) => handleSliderChange('temperature', e.target.value)}

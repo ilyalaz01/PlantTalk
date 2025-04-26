@@ -98,8 +98,8 @@ const getStatusMessage = (type, value) => {
       return 'Perfect';
       
     case 'temperature':
-      if (value < 65) return 'Too Cold';
-      if (value > 75) return 'Too Hot';
+      if (value < 18) return 'Too Cold';
+      if (value > 24) return 'Too Hot';
       return 'Perfect';
       
     case 'humidity':
@@ -140,8 +140,8 @@ const getStatus = (type, value) => {
       return 'optimal';
       
     case 'temperature':
-      if (value < 65) return 'low';
-      if (value > 75) return 'high';
+      if (value < 18) return 'low';
+      if (value > 24) return 'high';
       return 'optimal';
       
     case 'humidity':
@@ -159,6 +159,15 @@ const getStatus = (type, value) => {
   }
 };
 
+const normalizeValue = (type, value) => {
+  if (type === 'temperature') {
+    // Clamp value between 0°C and 40°C, then scale to 0-100%
+    const clamped = Math.min(Math.max(value, 0), 40);
+    return (clamped / 40) * 100;
+  }
+  return value; // For other types, leave it as is
+};
+
 const getUnit = (type) => {
   switch (type) {
     case 'moisture':
@@ -166,7 +175,7 @@ const getUnit = (type) => {
     case 'light':
       return '%';
     case 'temperature':
-      return '°F';
+      return '°C';
     default:
       return '';
   }
@@ -177,13 +186,15 @@ const SensorGauge = ({ type, value, title }) => {
   const statusMessage = getStatusMessage(type, value);
   const icon = getIcon(type);
   const unit = getUnit(type);
+  const normalizedValue = normalizeValue(type, value);
+
   
   return (
     <GaugeContainer>
       <GaugeTitle>{title}</GaugeTitle>
       <GaugeIconWrapper>{icon}</GaugeIconWrapper>
       <GaugeVisual>
-        <GaugeFill value={value} status={status} />
+        <GaugeFill value={normalizedValue} status={status} />
       </GaugeVisual>
       <GaugeValue status={status}>
         {value}
