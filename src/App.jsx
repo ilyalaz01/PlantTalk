@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import ChatPage from './pages/ChatPage';
 import ProfilePage from './pages/ProfilePage';
 import SimulatorPage from './pages/SimulatorPage';
+import ModelInsights from './pages/ModelInsight';
 
 const App = () => {
   return (
@@ -25,6 +26,7 @@ const App = () => {
               <Route path="/chat" element={<ChatPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/simulator" element={<SimulatorPage />} />
+              <Route path="/insights" element={<ModelInsights />} />
             </Routes>
           </Router>
         </SensorProvider>

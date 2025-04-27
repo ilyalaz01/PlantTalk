@@ -96,13 +96,15 @@ const BubbleText = styled.div`
   `}
 `;
 
-const SpeechBubble = () => {
-  const { plant } = usePlant();
-  const { sensorData, daysUntilWaterNeeded } = useSensor();
+const SpeechBubble = ({ plant: propPlant, sensorData: propSensor }) => {
+  const { plant: contextPlant } = usePlant();
+  const { sensorData: contextSensor, daysUntilWaterNeeded } = useSensor();
   const [currentMessage, setCurrentMessage] = useState('');
   const [isTyping, setIsTyping] = useState(true);
-  
+  const plant = propPlant || contextPlant;
+  const sensorData = propSensor || contextSensor;
   // Get emotion based on plant status
+  
   const getEmotion = (status) => {
     switch (status) {
       case 'thirsty':

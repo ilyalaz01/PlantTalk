@@ -87,6 +87,7 @@ const Navigation = () => {
     { path: '/chat', label: 'Chat', icon: '💬' },
     { path: '/profile', label: 'Profile', icon: '🌱' },
     { path: '/simulator', label: 'Simulator', icon: '🔬' },
+    { path: '/insights', label: 'Insights', icon: '📊' },
   ];
   
   return (

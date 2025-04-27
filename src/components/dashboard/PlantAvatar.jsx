@@ -198,19 +198,21 @@ const plantAnimations = {
   }
 };
 
-const PlantAvatar = () => {
-  const { plant } = usePlant();
-  const { sensorData } = useSensor();
+const PlantAvatar = ({ plant: propPlant, sensorData: propSensor }) => {
+  const { plant: contextPlant } = usePlant();
+  const { sensorData: contextSensor } = useSensor();
   const [droplets, setDroplets] = useState([]);
   const [mistParticles, setMistParticles] = useState([]);
   const [crackParticles, setCrackParticles] = useState([]);
-  
+
+  const plant = propPlant || contextPlant;
+  const sensorData = propSensor || contextSensor;
   // Get appearance based on plant state and sensor data
   const appearance = getPlantAppearance(
-    plant.status, 
-    sensorData.temperature, 
-    sensorData.soilMoisture,
-    sensorData.humidity
+    plant?.status, 
+    sensorData?.temperature, 
+    sensorData?.soilMoisture, 
+    sensorData?.humidity
   );
   
   // Effect for creating tear droplets when plant is sad from low moisture
