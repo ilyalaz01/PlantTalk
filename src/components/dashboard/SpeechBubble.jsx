@@ -125,9 +125,9 @@ const SpeechBubble = () => {
       case 'thirsty':
         return `${greeting}, I'm feeling quite thirsty! My soil is getting dry. Could you water me soon?`;
       case 'cold':
-        return `Brrrr! ${greeting}, but I'm feeling a bit cold. The temperature is ${sensorData.temperature}°F. Could you move me somewhere warmer?`;
+        return `Brrrr! ${greeting}, but I'm feeling a bit cold. The temperature is ${sensorData.temperature}°C. Could you move me somewhere warmer?`;
       case 'hot':
-        return `Whew! ${greeting}, but it's too hot for me at ${sensorData.temperature}°F. Could you move me to a cooler spot?`;
+        return `Whew! ${greeting}, but it's too hot for me at ${sensorData.temperature}°C. Could you move me to a cooler spot?`;
       default:
         if (daysUntilWaterNeeded <= 1) {
           return `${greeting}! I'm doing well, but I'll need water tomorrow. My soil moisture is at ${sensorData.soilMoisture}%.`;
