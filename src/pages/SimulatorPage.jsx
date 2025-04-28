@@ -85,7 +85,7 @@ const SimulatorPage = () => {
       case 'drought':
         setSimulatedValues({
           moisture: 15,
-          temperature: 75,
+          temperature: 20,
           humidity: 30,
           light: 70
         });
@@ -93,7 +93,7 @@ const SimulatorPage = () => {
       case 'overwatered':
         setSimulatedValues({
           moisture: 90,
-          temperature: 72,
+          temperature: 20,
           humidity: 60,
           light: 60
         });
@@ -101,7 +101,7 @@ const SimulatorPage = () => {
       case 'cold':
         setSimulatedValues({
           moisture: 55,
-          temperature: 50,
+          temperature: 10,
           humidity: 40,
           light: 40
         });
@@ -109,7 +109,7 @@ const SimulatorPage = () => {
       case 'hot':
         setSimulatedValues({
           moisture: 30,
-          temperature: 90,
+          temperature: 40,
           humidity: 30,
           light: 85
         });
@@ -117,7 +117,7 @@ const SimulatorPage = () => {
       case 'ideal':
         setSimulatedValues({
           moisture: 50,
-          temperature: 70,
+          temperature: 20,
           humidity: 55,
           light: 60
         });
@@ -142,9 +142,9 @@ const SimulatorPage = () => {
     
     if (simulatedValues.moisture < 30) {
       newStatus = 'thirsty';
-    } else if (simulatedValues.temperature < 60) {
+    } else if (simulatedValues.temperature < 17) {
       newStatus = 'cold';
-    } else if (simulatedValues.temperature > 80) {
+    } else if (simulatedValues.temperature > 27) {
       newStatus = 'hot';
     }
     

@@ -101,49 +101,130 @@ const SpeechBubble = ({ plant: propPlant, sensorData: propSensor }) => {
   const { sensorData: contextSensor, daysUntilWaterNeeded } = useSensor();
   const [currentMessage, setCurrentMessage] = useState('');
   const [isTyping, setIsTyping] = useState(true);
-  const plant = propPlant || contextPlant;
-  const sensorData = propSensor || contextSensor;
-  // Get emotion based on plant status
+  const [emotion, setEmotion] = useState('😊 Happy');
   
-  const getEmotion = (status) => {
-    switch (status) {
+  // Use props if provided, otherwise use context
+  const plant = propPlant || contextPlant || {};
+  const sensorData = propSensor || contextSensor || {
+    soilMoisture: 50,
+    temperature: 22,
+    humidity: 50,
+    light: 60
+  };
+  
+  // Determine plant's condition based on all sensor data
+  const determineCondition = () => {
+    // Check conditions in order of priority
+    
+    // Moisture conditions - critical for plant survival
+    if (sensorData.soilMoisture < 30) {
+      return 'thirsty';
+    }
+    if (sensorData.soilMoisture > 70) {
+      return 'overwatered';
+    }
+    
+    // Temperature extremes
+    if (sensorData.temperature < 17) {
+      return 'cold';
+    }
+    if (sensorData.temperature > 27) {
+      return 'hot';
+    }
+    
+    // Humidity issues
+    if (sensorData.humidity < 40) {
+      return 'dry';
+    }
+    if (sensorData.humidity > 70) {
+      return 'humid';
+    }
+    
+    // Light issues
+    if (sensorData.light < 30) {
+      return 'dark';
+    }
+    if (sensorData.light > 80) {
+      return 'bright';
+    }
+    
+    // All conditions are optimal
+    return 'happy';
+  };
+  
+  // Get emotion based on plant condition
+  const getEmotion = (condition) => {
+    switch (condition) {
       case 'thirsty':
         return '😫 Thirsty';
+      case 'overwatered':
+        return '😵 Overwatered';
       case 'cold':
         return '🥶 Cold';
       case 'hot':
         return '🥵 Hot';
+      case 'dry':
+        return '🏜️ Parched';
+      case 'humid':
+        return '💦 Humid';
+      case 'dark':
+        return '🌑 Low Light';
+      case 'bright':
+        return '☀️ Bright';
       default:
         return '😊 Happy';
     }
   };
   
-  // Generate appropriate message based on plant status and sensor data
-  const generateMessage = () => {
+  // Generate appropriate message based on plant condition and sensor data
+  const generateMessage = (condition) => {
     const timeOfDay = new Date().getHours();
     const greeting = timeOfDay < 12 ? 'Good morning' : timeOfDay < 18 ? 'Good afternoon' : 'Good evening';
     
-    switch (plant.status) {
+    switch (condition) {
       case 'thirsty':
-        return `${greeting}, I'm feeling quite thirsty! My soil is getting dry. Could you water me soon?`;
+        return `${greeting}! I'm feeling quite thirsty! My soil moisture is only ${sensorData.soilMoisture}%. Could you water me soon?`;
+      
+      case 'overwatered':
+        return `${greeting}! I'm feeling waterlogged at ${sensorData.soilMoisture}% moisture. My roots need some air to breathe!`;
+      
       case 'cold':
-        return `Brrrr! ${greeting}, but I'm feeling a bit cold. The temperature is ${sensorData.temperature}°C. Could you move me somewhere warmer?`;
+        return `Brrrr! ${greeting}! I'm feeling too cold at ${sensorData.temperature}°C. Could you move me somewhere warmer?`;
+      
       case 'hot':
-        return `Whew! ${greeting}, but it's too hot for me at ${sensorData.temperature}°C. Could you move me to a cooler spot?`;
+        return `Whew! ${greeting}! It's too hot for me at ${sensorData.temperature}°C. Could you move me to a cooler spot or provide some shade?`;
+      
+      case 'dry':
+        return `${greeting}! The air is so dry at ${sensorData.humidity}% humidity. My leaves are feeling crispy. Could you mist me or add a humidifier nearby?`;
+      
+      case 'humid':
+        return `${greeting}! It's very humid here at ${sensorData.humidity}% humidity. My leaves are staying wet which could invite disease. Could you improve air circulation?`;
+      
+      case 'dark':
+        return `${greeting}! I'm not getting enough light at ${sensorData.light}%. Could you move me closer to a window or provide more light?`;
+      
+      case 'bright':
+        return `${greeting}! It's very bright here at ${sensorData.light}% light intensity. I might get sunburned! Could you provide some light filtering?`;
+      
       default:
+        // Happy and no immediate concerns
         if (daysUntilWaterNeeded <= 1) {
           return `${greeting}! I'm doing well, but I'll need water tomorrow. My soil moisture is at ${sensorData.soilMoisture}%.`;
-        } else if (sensorData.light < 30) {
-          return `${greeting}! I'm healthy, but I could use a bit more light. Maybe move me closer to a window?`;
+        } else if (daysUntilWaterNeeded <= 3) {
+          return `${greeting}! I'm feeling great today. I'll need water in about ${Math.round(daysUntilWaterNeeded)} days. Thanks for taking such good care of me!`;
         } else {
-          return `${greeting}! I'm feeling great today. Thanks for taking such good care of me!`;
+          return `${greeting}! I'm feeling absolutely perfect! All my environmental conditions are ideal. Thanks for being such a great plant parent!`;
         }
     }
   };
   
   // Update message when plant status or sensor data changes
   useEffect(() => {
-    const newMessage = generateMessage();
+    const condition = determineCondition();
+    const newEmotion = getEmotion(condition);
+    const newMessage = generateMessage(condition);
+    
+    setEmotion(newEmotion);
     setIsTyping(true);
     setCurrentMessage('');
     
@@ -160,13 +241,20 @@ const SpeechBubble = ({ plant: propPlant, sensorData: propSensor }) => {
     }, 500);
     
     return () => clearTimeout(typingTimeout);
-  }, [plant.status, sensorData, daysUntilWaterNeeded]);
+  }, [
+    plant?.status, 
+    sensorData?.soilMoisture, 
+    sensorData?.temperature, 
+    sensorData?.humidity, 
+    sensorData?.light, 
+    daysUntilWaterNeeded
+  ]);
   
   return (
     <BubbleContainer>
       <BubbleHeader>
-        <PlantName>{plant.name}</PlantName>
-        <PlantMood>{getEmotion(plant.status)}</PlantMood>
+        <PlantName>{plant?.name || 'Fern Friend'}</PlantName>
+        <PlantMood>{emotion}</PlantMood>
       </BubbleHeader>
       <BubbleText typing={isTyping}>
         {currentMessage}
