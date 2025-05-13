@@ -29,7 +29,7 @@ const useEcologicalModel = () => {
   // Soil type coefficient for the mechanistic model
   // This would ideally come from plant species database
   const soilCoefficient = 0.1; // Default for potting mix
-  const baseTemperature = 50; // Base temperature for calculation in Fahrenheit
+  const baseTemperature = 10; // Base temperature in Celsius (minimum temp for growth)
   
   // Run conceptual model to determine plant status and environment health
   const runConceptualModel = () => {
@@ -41,11 +41,11 @@ const useEcologicalModel = () => {
       moistureStatus = 'high';
     }
     
-    // Evaluate temperature
+    // Evaluate temperature - using ideal range of 18-24°C for most houseplants
     let temperatureStatus = 'optimal';
-    if (sensorData.temperature < 60) {
+    if (sensorData.temperature < 18) {
       temperatureStatus = 'low';
-    } else if (sensorData.temperature > 75) {
+    } else if (sensorData.temperature > 24) {
       temperatureStatus = 'high';
     }
     
@@ -94,7 +94,7 @@ const useEcologicalModel = () => {
   const runMechanisticModel = () => {
     // Implement the moisture depletion model: dM/dt = -k · (T - Tbase) · (1 - H/100)
     const k = soilCoefficient;
-    const T = sensorData.temperature;
+    const T = sensorData.temperature; // Already in Celsius
     const H = sensorData.humidity;
     
     // Calculate daily moisture depletion rate (percentage points per day)
@@ -112,15 +112,15 @@ const useEcologicalModel = () => {
   // Weather integration model - adjust recommendations based on weather
   const adjustForWeather = (recommendations) => {
     // In a real app, this would use actual weather data
-    // For demo, we'll use simulated weather
+    // For demo, we'll use simulated weather (now in Celsius)
     const simulatedWeather = {
       condition: 'sunny',
-      temperature: 75,
+      temperature: 24, // in Celsius
       humidity: 45,
       forecast: [
-        { day: 'today', condition: 'sunny', temperature: 75 },
-        { day: 'tomorrow', condition: 'partly cloudy', temperature: 72 },
-        { day: 'day3', condition: 'chance of rain', temperature: 68 }
+        { day: 'today', condition: 'sunny', temperature: 24 }, // in Celsius
+        { day: 'tomorrow', condition: 'partly cloudy', temperature: 22 }, // in Celsius
+        { day: 'day3', condition: 'chance of rain', temperature: 20 } // in Celsius
       ]
     };
     
@@ -142,8 +142,8 @@ const useEcologicalModel = () => {
       }
     }
     
-    // Add recommendation for plant protection if extreme weather
-    if (simulatedWeather.temperature > 85) {
+    // Add recommendation for plant protection if extreme weather (29°C is about 85°F)
+    if (simulatedWeather.temperature > 29) {
       adjustedRecommendations.push({
         type: 'protect',
         text: 'High outdoor temperatures forecast. Keep plant away from hot windows.',
@@ -162,14 +162,14 @@ const useEcologicalModel = () => {
     if (moisture === 'low') {
       recommendations.push({
         type: 'water',
-        text: 'Water your plant thoroughly.',
+        text: `Water your plant thoroughly. Current soil moisture is only ${sensorData.soilMoisture}%.`,
         timing: daysUntilWaterNeeded <= 0 ? 'Today' : 'In ' + Math.ceil(daysUntilWaterNeeded) + ' days',
         priority: 'high'
       });
     } else if (moisture === 'high') {
       recommendations.push({
         type: 'drain',
-        text: 'Check that your pot is draining properly. Let soil dry out before watering again.',
+        text: `Check that your pot is draining properly. Let soil dry out before watering again. Current soil moisture is high at ${sensorData.soilMoisture}%.`,
         priority: 'medium'
       });
     }
@@ -178,13 +178,13 @@ const useEcologicalModel = () => {
     if (temperature === 'low') {
       recommendations.push({
         type: 'move',
-        text: 'Move your plant to a warmer location away from drafts and cold windows.',
+        text: `Move your plant to a warmer location away from drafts and cold windows. Current temperature is ${sensorData.temperature}°C, which is below the ideal range of 18-24°C.`,
         priority: 'high'
       });
     } else if (temperature === 'high') {
       recommendations.push({
         type: 'move',
-        text: 'Move your plant to a cooler location away from heat sources and direct sun.',
+        text: `Move your plant to a cooler location away from heat sources and direct sun. Current temperature is ${sensorData.temperature}°C, which is above the ideal range of 18-24°C.`,
         priority: 'high'
       });
     }
@@ -193,13 +193,13 @@ const useEcologicalModel = () => {
     if (humidity === 'low') {
       recommendations.push({
         type: 'mist',
-        text: 'Increase humidity by misting your plant or using a humidifier.',
+        text: `Increase humidity by misting your plant or using a humidifier. Current humidity is only ${sensorData.humidity}%.`,
         priority: 'medium'
       });
     } else if (humidity === 'high') {
       recommendations.push({
         type: 'air',
-        text: 'Improve air circulation around your plant to prevent fungal issues.',
+        text: `Improve air circulation around your plant to prevent fungal issues. Current humidity is ${sensorData.humidity}%, which is quite high.`,
         priority: 'low'
       });
     }
@@ -208,13 +208,13 @@ const useEcologicalModel = () => {
     if (light === 'low') {
       recommendations.push({
         type: 'light',
-        text: 'Move your plant to a brighter location with more indirect sunlight.',
+        text: `Move your plant to a brighter location with more indirect sunlight. Current light level is only ${sensorData.light}%.`,
         priority: 'medium'
       });
     } else if (light === 'high') {
       recommendations.push({
         type: 'shade',
-        text: 'Your plant may be getting too much direct light. Consider moving it to a location with filtered light.',
+        text: `Your plant may be getting too much direct light at ${sensorData.light}%. Consider moving it to a location with filtered light.`,
         priority: 'medium'
       });
     }
@@ -226,12 +226,12 @@ const useEcologicalModel = () => {
     if (recommendations.length === 0) {
       recommendations.push({
         type: 'maintain',
-        text: 'Your plant is doing well! Continue with your regular care routine.',
+        text: 'Your plant is doing well! All conditions are optimal. Continue with your regular care routine.',
         priority: 'low'
       });
       
       // Add rotation recommendation every 2 weeks
-      if (plant.careHistory.filter(action => action.action === 'rotated').length === 0) {
+      if (plant.careHistory && plant.careHistory.filter(action => action.action === 'rotated').length === 0) {
         recommendations.push({
           type: 'rotate',
           text: 'Consider rotating your plant to ensure even growth.',
@@ -245,13 +245,15 @@ const useEcologicalModel = () => {
   
   // Run models when sensor data changes
   useEffect(() => {
-    runConceptualModel();
-    runMechanisticModel();
+    if (sensorData) {
+      runConceptualModel();
+      runMechanisticModel();
+    }
   }, [
-    sensorData.soilMoisture, 
-    sensorData.temperature, 
-    sensorData.humidity, 
-    sensorData.light
+    sensorData?.soilMoisture, 
+    sensorData?.temperature, 
+    sensorData?.humidity, 
+    sensorData?.light
   ]);
   
   return {
