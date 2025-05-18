@@ -23,7 +23,9 @@ const useSensorData = (plantId, refreshInterval = 30000) => {
   const fetchCurrentData = useCallback(async () => {
     try {
       setLoading(true);
-      
+      const response = await fetch("https://gardenpi.duckdns.org/");
+      const liveData = await response.json();
+
       // In a real app, this would call the API
       // const data = await fetchSensorData(plantId);
       
@@ -36,15 +38,15 @@ const useSensorData = (plantId, refreshInterval = 30000) => {
         lastUpdated: new Date()
       };
       
-      // Round values for nicer display
+
       const roundedData = {
-        soilMoisture: Math.round(simulatedData.soilMoisture),
-        temperature: Math.round(simulatedData.temperature * 10) / 10,
-        humidity: Math.round(simulatedData.humidity),
-        light: Math.round(simulatedData.light),
-        lastUpdated: simulatedData.lastUpdated
+        soilMoisture: Math.round(liveData.soil.percent),
+        temperature: Math.round(liveData.temperature.value * 10) / 10,
+        humidity: Math.round(liveData.humidity.value),
+        light: Math.round(liveData.light.value || 65), // fallback or add logic for light if missing
+        lastUpdated: new Date()
       };
-      
+
       setCurrentData(roundedData);
       setLoading(false);
     } catch (err) {

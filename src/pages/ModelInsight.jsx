@@ -2,6 +2,8 @@
 import React from 'react';
 import styled from 'styled-components';
 import useEcologicalModel from '../hooks/useEcologicalModel';
+import useSensorData from '../hooks/useSensorData';
+import useModelPrediction from '../hooks/useModelPrediction';
 
 const InsightsContainer = styled.div`
   max-width: 800px;
@@ -47,11 +49,15 @@ const ModelInsights = () => {
     daysUntilWaterNeeded,
     careRecommendations
   } = useEcologicalModel();
+const { currentData } = useSensorData();
+const modelPrediction = useModelPrediction(currentData);
 
   return (
     <InsightsContainer>
       <h2>Ecological Model Insights</h2>
-
+      <SectionTitle>🌿 Model Status Prediction</SectionTitle>
+      <StatItem>Predicted Status: <strong>{modelPrediction || 'Loading...'}</strong></StatItem>
+      
       <Section>
         <SectionTitle>🌿 Plant Status</SectionTitle>
         <StatItem>Current Status: <strong>{plantStatus}</strong></StatItem>
