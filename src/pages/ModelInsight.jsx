@@ -50,23 +50,42 @@ const ModelInsights = () => {
     careRecommendations
   } = useEcologicalModel();
 const { currentData } = useSensorData();
-const modelPrediction = useModelPrediction(currentData);
+  const { prediction, pcaInfo } = useModelPrediction(currentData);
 
   return (
     <InsightsContainer>
       <h2>Ecological Model Insights</h2>
-      <SectionTitle>🌿 Model Status Prediction</SectionTitle>
-      <StatItem>Predicted Status: <strong>{modelPrediction || 'Loading...'}</strong></StatItem>
-      
+
       <Section>
-        <SectionTitle>🌿 Plant Status</SectionTitle>
+        <SectionTitle>🌿 Model Status Prediction</SectionTitle>
+        <StatItem>
+          Predicted Status: <strong>{prediction || 'Loading...'}</strong>
+        </StatItem>
+        {pcaInfo && (
+          <>
+            <StatItem>
+              PCA Components: {pcaInfo.components.map((val, i) => (
+                <span key={i}><strong>PC{i+1}:</strong> {val.toFixed(2)} </span>
+              ))}
+            </StatItem>
+            <StatItem>
+              Explained Variance: {pcaInfo.explainedVariance.map((v, i) => (
+                <span key={i}><strong>PC{i+1}:</strong> {(v * 100).toFixed(1)}% </span>
+              ))}
+            </StatItem>
+          </>
+        )}
+      </Section>
+
+      <Section>
+        <SectionTitle>🌱 Plant Status</SectionTitle>
         <StatItem>Current Status: <strong>{plantStatus}</strong></StatItem>
         <StatItem>Estimated Days Until Water Needed: <strong>{daysUntilWaterNeeded}</strong></StatItem>
         <StatItem>Moisture Depletion Rate: <strong>{moistureDepletionRate.toFixed(2)} %/day</strong></StatItem>
       </Section>
 
       <Section>
-        <SectionTitle>🌱 Environmental Health</SectionTitle>
+        <SectionTitle>🌤️ Environmental Health</SectionTitle>
         <StatList>
           <StatItem>Moisture: {environmentalHealth.moisture}</StatItem>
           <StatItem>Temperature: {environmentalHealth.temperature}</StatItem>

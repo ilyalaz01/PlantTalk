@@ -32,38 +32,25 @@ const useEcologicalModel = () => {
   const baseTemperature = 10; // Base temperature in Celsius (minimum temp for growth)
   
   // Run conceptual model to determine plant status and environment health
-  const runConceptualModel = () => {
-    // Evaluate soil moisture
-    let moistureStatus = 'optimal';
-    if (sensorData.soilMoisture < 30) {
-      moistureStatus = 'low';
-    } else if (sensorData.soilMoisture > 70) {
-      moistureStatus = 'high';
+    const runConceptualModel = () => {
+    const { soilMoisture: moisture, temperature: temp, humidity, light } = sensorData;
+    // 🌱 Data-driven label logic based on research
+    let status;
+    if (moisture < 30 || (temp > 32 && humidity < 40)) {
+      status = 'thirsty';
+    } else if (moisture > 75 && (humidity > 75 || temp < 20)) {
+      status = 'overwatered';
+    } else if (moisture >= 40 && moisture <= 70 && temp >= 21 && temp <= 30 && humidity >= 40 && humidity <= 70) {
+      status = 'healthy';
+    } else {
+      status = 'stressed';
     }
-    
-    // Evaluate temperature - using ideal range of 18-24°C for most houseplants
-    let temperatureStatus = 'optimal';
-    if (sensorData.temperature < 18) {
-      temperatureStatus = 'low';
-    } else if (sensorData.temperature > 24) {
-      temperatureStatus = 'high';
-    }
-    
-    // Evaluate humidity
-    let humidityStatus = 'optimal';
-    if (sensorData.humidity < 40) {
-      humidityStatus = 'low';
-    } else if (sensorData.humidity > 70) {
-      humidityStatus = 'high';
-    }
-    
-    // Evaluate light
-    let lightStatus = 'optimal';
-    if (sensorData.light < 30) {
-      lightStatus = 'low';
-    } else if (sensorData.light > 80) {
-      lightStatus = 'high';
-    }
+    setPlantStatus(status);
+    // Environmental health breakdown
+    const moistureStatus = moisture < 30 ? 'low' : moisture > 75 ? 'high' : 'optimal';
+    const temperatureStatus = temp < 21 ? 'low' : temp > 30 ? 'high' : 'optimal';
+    const humidityStatus = humidity < 40 ? 'low' : humidity > 70 ? 'high' : 'optimal';
+    const lightStatus = light < 30 ? 'low' : light > 80 ? 'high' : 'optimal';
     
     // Set environmental health statuses
     setEnvironmentalHealth({
@@ -156,92 +143,85 @@ const useEcologicalModel = () => {
   
   // Generate care recommendations based on environmental status
   const generateCareRecommendations = (moisture, temperature, humidity, light) => {
-    let recommendations = [];
-    
-    // Add recommendations based on moisture
-    if (moisture === 'low') {
-      recommendations.push({
-        type: 'water',
-        text: `Water your plant thoroughly. Current soil moisture is only ${sensorData.soilMoisture}%.`,
-        timing: daysUntilWaterNeeded <= 0 ? 'Today' : 'In ' + Math.ceil(daysUntilWaterNeeded) + ' days',
-        priority: 'high'
-      });
-    } else if (moisture === 'high') {
-      recommendations.push({
-        type: 'drain',
-        text: `Check that your pot is draining properly. Let soil dry out before watering again. Current soil moisture is high at ${sensorData.soilMoisture}%.`,
-        priority: 'medium'
-      });
-    }
-    
-    // Add recommendations based on temperature
-    if (temperature === 'low') {
-      recommendations.push({
-        type: 'move',
-        text: `Move your plant to a warmer location away from drafts and cold windows. Current temperature is ${sensorData.temperature}°C, which is below the ideal range of 18-24°C.`,
-        priority: 'high'
-      });
-    } else if (temperature === 'high') {
-      recommendations.push({
-        type: 'move',
-        text: `Move your plant to a cooler location away from heat sources and direct sun. Current temperature is ${sensorData.temperature}°C, which is above the ideal range of 18-24°C.`,
-        priority: 'high'
-      });
-    }
-    
-    // Add recommendations based on humidity
-    if (humidity === 'low') {
-      recommendations.push({
-        type: 'mist',
-        text: `Increase humidity by misting your plant or using a humidifier. Current humidity is only ${sensorData.humidity}%.`,
-        priority: 'medium'
-      });
-    } else if (humidity === 'high') {
-      recommendations.push({
-        type: 'air',
-        text: `Improve air circulation around your plant to prevent fungal issues. Current humidity is ${sensorData.humidity}%, which is quite high.`,
-        priority: 'low'
-      });
-    }
-    
-    // Add recommendations based on light
-    if (light === 'low') {
-      recommendations.push({
-        type: 'light',
-        text: `Move your plant to a brighter location with more indirect sunlight. Current light level is only ${sensorData.light}%.`,
-        priority: 'medium'
-      });
-    } else if (light === 'high') {
-      recommendations.push({
-        type: 'shade',
-        text: `Your plant may be getting too much direct light at ${sensorData.light}%. Consider moving it to a location with filtered light.`,
-        priority: 'medium'
-      });
-    }
-    
-    // Adjust recommendations based on weather forecast
-    recommendations = adjustForWeather(recommendations);
-    
-    // Add routine care recommendations if no urgent items
-    if (recommendations.length === 0) {
-      recommendations.push({
-        type: 'maintain',
-        text: 'Your plant is doing well! All conditions are optimal. Continue with your regular care routine.',
-        priority: 'low'
-      });
-      
-      // Add rotation recommendation every 2 weeks
-      if (plant.careHistory && plant.careHistory.filter(action => action.action === 'rotated').length === 0) {
+      const m = sensorData.soilMoisture;
+      const t = sensorData.temperature;
+      const h = sensorData.humidity;
+
+      let recommendations = [];
+
+      if (plantStatus === 'thirsty') {
         recommendations.push({
-          type: 'rotate',
-          text: 'Consider rotating your plant to ensure even growth.',
+          type: 'water',
+          text: `Soil is dry (${m}%). Water thoroughly.`,
+          timing: daysUntilWaterNeeded <= 0 ? 'Today' : `In ${Math.ceil(daysUntilWaterNeeded)} days`,
+          priority: 'high'
+        });
+      } else if (plantStatus === 'overwatered') {
+        recommendations.push({
+          type: 'drain',
+          text: `Soil is very wet (${m}%) and humidity is high. Improve drainage.`,
+          priority: 'high'
+        });
+      } else if (plantStatus === 'stressed') {
+        recommendations.push({
+          type: 'adjust',
+          text: `Conditions are not ideal. Moisture: ${m}%, Temp: ${t}°C, Humidity: ${h}%.`,
+          priority: 'medium'
+        });
+      }
+
+      if (temperature === 'low') {
+        recommendations.push({
+          type: 'move',
+          text: `Move plant to warmer area. Current temperature is ${t}°C.`,
+          priority: 'medium'
+        });
+      } else if (temperature === 'high') {
+        recommendations.push({
+          type: 'shade',
+          text: `Too hot (${t}°C). Shade the plant or move it.`,
+          priority: 'medium'
+        });
+      }
+
+      if (humidity === 'low') {
+        recommendations.push({
+          type: 'mist',
+          text: `Humidity low at ${h}%. Mist the plant or use humidifier.`,
+          priority: 'low'
+        });
+      } else if (humidity === 'high') {
+        recommendations.push({
+          type: 'air',
+          text: `Humidity high (${h}%). Ensure good airflow.`,
           priority: 'low'
         });
       }
-    }
-    
-    setCareRecommendations(recommendations);
-  };
+
+      if (light === 'low') {
+        recommendations.push({
+          type: 'light',
+          text: `Light level too low. Move to a brighter spot.`,
+          priority: 'medium'
+        });
+      } else if (light === 'high') {
+        recommendations.push({
+          type: 'shade',
+          text: `Light is too intense. Consider filtered sunlight.`,
+          priority: 'medium'
+        });
+      }
+
+      if (recommendations.length === 0) {
+        recommendations.push({
+          type: 'maintain',
+          text: 'All conditions are optimal. Keep regular care routine.',
+          priority: 'low'
+        });
+      }
+
+      setCareRecommendations(adjustForWeather(recommendations));
+    };
   
   // Run models when sensor data changes
   useEffect(() => {

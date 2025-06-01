@@ -1,10 +1,12 @@
 // src/hooks/useModelPrediction.js
 import { useEffect, useState } from 'react';
+import axios from 'axios';
 
-const MODEL_API_URL = "https://basil-pca-api-1.onrender.com/predict"; // replace with your real URL
+const MODEL_API_URL = "https://basil-pca-api-production.up.railway.app/predict"; // use relative URL if using Vercel + FastAPI proxying
 
 const useModelPrediction = (sensorData) => {
   const [prediction, setPrediction] = useState(null);
+  const [pcaInfo, setPcaInfo] = useState(null); // optional if you want PCA outputs
 
   useEffect(() => {
     if (!sensorData) return;
@@ -23,13 +25,12 @@ const useModelPrediction = (sensorData) => {
 
     const fetchPrediction = async () => {
       try {
-        const response = await fetch(MODEL_API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+        const response = await axios.post(MODEL_API_URL, payload);
+        setPrediction(response.data.status);
+        setPcaInfo({
+          components: response.data.pca_components,
+          explainedVariance: response.data.explained_variance
         });
-        const data = await response.json();
-        setPrediction(data.status);
       } catch (error) {
         console.error("Prediction error:", error);
       }
@@ -38,7 +39,7 @@ const useModelPrediction = (sensorData) => {
     fetchPrediction();
   }, [sensorData]);
 
-  return prediction;
+  return { prediction, pcaInfo }; // now returns both status and PCA details
 };
 
 export default useModelPrediction;
