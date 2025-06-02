@@ -13,7 +13,8 @@ export default defineConfig({
       '/api/garden': {
         target: 'https://gardenpi.duckdns.org',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/garden/, '')
+        secure: false, // ADD THIS LINE to skip HTTPS cert issues
+        rewrite: (path) => '' // <- REMOVE everything, point directly to root
       }
     }
   }
