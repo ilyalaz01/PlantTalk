@@ -22,16 +22,17 @@ const [currentData, setCurrentData] = useState({
   // Function to fetch current sensor readings
 const fetchCurrentData = useCallback(async () => {
   try {
-    const response = await fetch("/api/garden/");
-    const contentType = response.headers.get("content-type");
+    const response = await fetch("/api/garden");
+    const text = await response.text();
 
-    if (!contentType || !contentType.includes("application/json")) {
-      const text = await response.text(); // read as string for debugging
+    // Try to parse JSON manually
+    let liveData;
+    try {
+      liveData = JSON.parse(text);
+    } catch (jsonErr) {
       console.error("Invalid JSON response:", text.slice(0, 200));
       throw new Error("Invalid JSON response from gardenpi");
     }
-
-    const liveData = await response.json();
 
     if (
       !liveData ||
@@ -46,7 +47,7 @@ const fetchCurrentData = useCallback(async () => {
       soilMoisture: Math.round(liveData.soil.percent),
       temperature: Math.round(liveData.temperature.value * 10) / 10,
       humidity: Math.round(liveData.humidity.value),
-      light: 65, // still hardcoded unless you have real light data
+      light: 65,
       lastUpdated: new Date()
     };
 
@@ -54,7 +55,6 @@ const fetchCurrentData = useCallback(async () => {
   } catch (err) {
     console.error("Error fetching real-time data:", err);
 
-    // Prevent crashing due to null access
     setCurrentData({
       soilMoisture: 0,
       temperature: 0,

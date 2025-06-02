@@ -8,14 +8,14 @@ export default defineConfig({
     react(), // Enable React support
     svgr()   // Enable SVGR support (import SVGs as React components)
   ],
-  server: {
+   server: {
     proxy: {
       '/api/garden': {
         target: 'https://gardenpi.duckdns.org',
         changeOrigin: true,
-        secure: false, // ADD THIS LINE to skip HTTPS cert issues
-        rewrite: (path) => '' // <- REMOVE everything, point directly to root
+        secure: false,
+        rewrite: () => '' // ← VERY IMPORTANT: remove everything
       }
     }
   }
-})
+});
