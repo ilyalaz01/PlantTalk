@@ -20,55 +20,28 @@ const [currentData, setCurrentData] = useState({
   const [error, setError] = useState(null);
   
   // Function to fetch current sensor readings
-const fetchCurrentData = useCallback(async () => {
+  const fetchCurrentData = useCallback(async () => {
   try {
-    const isLocal = window.location.hostname === 'localhost';
-    const apiUrl = isLocal
-      ? '/api/garden'
-      : 'https://gardenpi.duckdns.org';
-
-    const response = await fetch(apiUrl);
-    const text = await response.text();
-
-    let liveData;
-    try {
-      liveData = JSON.parse(text);
-    } catch {
-      console.error("Invalid JSON response:", text.slice(0, 200));
-      throw new Error("Invalid JSON response from gardenpi");
-    }
-
-    if (
-      !liveData ||
-      typeof liveData.temperature?.value !== "number" ||
-      typeof liveData.humidity?.value !== "number" ||
-      typeof liveData.soil?.percent !== "number"
-    ) {
+    const response = await fetch('/api/garden');
+    const liveData = await response.json();
+    if (!liveData || !liveData.temperature || !liveData.humidity || !liveData.soil) {
       throw new Error("Incomplete sensor data");
     }
 
     const roundedData = {
-      soilMoisture: Math.round(liveData.soil.percent),
-      temperature: Math.round(liveData.temperature.value * 10) / 10,
-      humidity: Math.round(liveData.humidity.value),
-      light: 65,
+      soilMoisture: Math.round(liveData?.soil?.percent ?? 0),
+      temperature: Math.round((liveData?.temperature?.value ?? 0) * 10) / 10,
+      humidity: Math.round(liveData?.humidity?.value ?? 0),
+      light: 65, // still hardcoded unless you have real light data
       lastUpdated: new Date()
     };
 
     setCurrentData(roundedData);
   } catch (err) {
     console.error("Error fetching real-time data:", err);
-
-    setCurrentData({
-      soilMoisture: 0,
-      temperature: 0,
-      humidity: 0,
-      light: 0,
-      lastUpdated: null
-    });
+    setCurrentData(null);
   }
 }, []);
-
   
   // Function to fetch historical sensor data
   //const fetchHistoricalData = useCallback(async (days = 7) => {
