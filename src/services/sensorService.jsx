@@ -2,15 +2,19 @@
 
 import { fetchWithAuth } from './api';
 
-// ==== Cloud API Requests (backend routes) ====
+// ==== Cloud API Requests (if applicable in your system) ====
 
-export const fetchSensorData = async (plantId) =>
-  fetchWithAuth(`/plants/${plantId}/sensors/current`);
+// Get latest sensor readings
+export const fetchSensorData = async (plantId) => {
+  return fetchWithAuth(`/plants/${plantId}/sensors/current`);
+};
 
+// Get historical sensor data from backend
 export const fetchBackendSensorHistory = async (plantId, options = {}) => {
   const { startDate, endDate, interval } = options;
   let url = `/plants/${plantId}/sensors/history`;
 
+  // Add query parameters if provided
   const params = new URLSearchParams();
   if (startDate) params.append('startDate', startDate.toISOString());
   if (endDate) params.append('endDate', endDate.toISOString());
@@ -23,88 +27,125 @@ export const fetchBackendSensorHistory = async (plantId, options = {}) => {
   return fetchWithAuth(url);
 };
 
-export const calculateHealthMetrics = async (plantId) =>
-  fetchWithAuth(`/plants/${plantId}/health-metrics`);
-
-export const predictCareSchedule = async (plantId) =>
-  fetchWithAuth(`/plants/${plantId}/care-predictions`);
-
-export const getSoilMoistureDepletion = async (plantId) =>
-  fetchWithAuth(`/plants/${plantId}/moisture-depletion`);
-
-// ==== Google Sheets Sensor History (fallback for real data logging) ====
-
-const SHEET_ID = '1kRgZwsISHOaA0EtDxQPibWbpdy-TMQnD7nsmjhAXNWo';
-const SHEET_NAME = 'Basil Logger';
-
-const parseGoogleSheetJSON = (text) => {
-  if (!text.trim().startsWith('google.visualization.Query.setResponse(')) {
-    throw new Error('Invalid response: Expected Google Sheets JSON format');
-  }
-  const jsonStart = text.indexOf('(') + 1;
-  const jsonEnd = text.lastIndexOf(')');
-  const jsonString = text.substring(jsonStart, jsonEnd);
-  return JSON.parse(jsonString);
+// Calculate health metrics based on sensor data
+export const calculateHealthMetrics = async (plantId) => {
+  return fetchWithAuth(`/plants/${plantId}/health-metrics`);
 };
 
-const parseSensorRows = (rows) =>
-  rows
-    .map((row) => {
+// Predict optimal care schedule
+export const predictCareSchedule = async (plantId) => {
+  return fetchWithAuth(`/plants/${plantId}/care-predictions`);
+};
+
+// Get soil moisture depletion rate
+export const getSoilMoistureDepletion = async (plantId) => {
+  return fetchWithAuth(`/plants/${plantId}/moisture-depletion`);
+};
+
+// ==== Google Sheets Sensor History (for real data logging) ====
+
+const SHEET_ID = '1kRgZwsISHOaA0EtDxQPibWbpdy-TMQnD7nsmjhAXNWo';
+const SHEET_NAME = 'Basil Logger'; // Sheet tab name
+
+export const fetchSensorHistory = async () => {
+  try {
+    // Use Google Sheets JSON API endpoint (this is what returns the JSON with row.c structure)
+    const jsonUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
+    
+    const response = await fetch(jsonUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch data: ${response.statusText}`);
+    }
+    
+    const text = await response.text();
+    console.log('Raw response:', text.substring(0, 200) + '...');
+    
+    // Google returns JSON wrapped in JS callback: "google.visualization.Query.setResponse(...)"
+    // Extract the JSON part
+    const jsonStart = text.indexOf('(') + 1;
+    const jsonEnd = text.lastIndexOf(')');
+    const jsonString = text.substring(jsonStart, jsonEnd);
+    
+    const json = JSON.parse(jsonString);
+    console.log('Parsed JSON:', json);
+    
+    // Check if we have table data
+    if (!json.table || !json.table.rows) {
+      throw new Error('No table data found in response');
+    }
+    
+    const rows = json.table.rows;
+    
+    // Map the rows to your data format
+    const mappedData = rows.map(row => {
+      // Handle cases where cells might be null or undefined
       const cells = row.c || [];
       const [timestampCell, moistureCell, temperatureCell, humidityCell] = cells;
-
-      if (
-        !timestampCell || typeof timestampCell.v !== 'string' ||
-        !moistureCell || isNaN(Number(moistureCell.v)) ||
-        !temperatureCell || isNaN(Number(temperatureCell.v)) ||
-        !humidityCell || isNaN(Number(humidityCell.v))
-      ) {
+      
+      // Skip rows with missing essential data
+      if (!timestampCell || !moistureCell || !temperatureCell || !humidityCell) {
         return null;
       }
-
-      const timestamp = new Date(timestampCell.v);
-      if (isNaN(timestamp.getTime())) return null;
-
+      
       return {
-        timestamp,
+        timestamp: new Date(timestampCell.v),
         soilMoisture: Number(moistureCell.v),
         temperature: Number(temperatureCell.v),
         humidity: Number(humidityCell.v),
-        light: 65,
+        light: 65, // Optional fallback
       };
-    })
-    .filter(
-      (row) =>
-        row &&
-        typeof row.temperature === 'number' &&
-        !isNaN(row.temperature) &&
-        typeof row.soilMoisture === 'number' &&
-        typeof row.humidity === 'number'
-    );
-
-export const fetchSensorHistory = async () => {
-  const urls = [
-    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`,
-    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=0`,
-  ];
-
-  for (const url of urls) {
+    }).filter(row => row !== null && !isNaN(row.timestamp.getTime())); // Filter out null rows and invalid dates
+    
+    console.log('Mapped data:', mappedData);
+    return mappedData;
+    
+  } catch (error) {
+    console.error('Error fetching sensor history:', error);
+    
+    // Try alternative URL format (without sheet name)
     try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Fetch failed: ${response.statusText}`);
-
-      const text = await response.text();
-      const json = parseGoogleSheetJSON(text);
-
-      if (!json.table || !json.table.rows) {
-        throw new Error('No table data in response');
+      const alternativeUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=0`;
+      
+      const response = await fetch(alternativeUrl);
+      if (!response.ok) {
+        throw new Error(`Alternative fetch failed: ${response.statusText}`);
       }
-
-      return parseSensorRows(json.table.rows);
-    } catch (err) {
-      console.error(`Fetch attempt failed for URL: ${url}`, err);
+      
+      const text = await response.text();
+      const jsonStart = text.indexOf('(') + 1;
+      const jsonEnd = text.lastIndexOf(')');
+      const jsonString = text.substring(jsonStart, jsonEnd);
+      
+      const json = JSON.parse(jsonString);
+      
+      if (!json.table || !json.table.rows) {
+        throw new Error('No table data found in alternative response');
+      }
+      
+      const rows = json.table.rows;
+      
+      return rows.map(row => {
+        const cells = row.c || [];
+        const [timestampCell, moistureCell, temperatureCell, humidityCell] = cells;
+        
+        if (!timestampCell || !moistureCell || !temperatureCell || !humidityCell) {
+          return null;
+        }
+        
+        return {
+          timestamp: new Date(timestampCell.v),
+          soilMoisture: Number(moistureCell.v),
+          temperature: Number(temperatureCell.v),
+          humidity: Number(humidityCell.v),
+          light: 65,
+        };
+      }).filter(row => row !== null && !isNaN(row.timestamp.getTime()));
+      
+    } catch (alternativeError) {
+      console.error('Alternative fetch also failed:', alternativeError);
+      
+      // Return empty array instead of hardcoded data
+      return [];
     }
   }
-
-  return []; // fallback: empty data
 };
