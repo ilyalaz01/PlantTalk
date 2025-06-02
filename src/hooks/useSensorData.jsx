@@ -22,14 +22,18 @@ const [currentData, setCurrentData] = useState({
   // Function to fetch current sensor readings
 const fetchCurrentData = useCallback(async () => {
   try {
-    const response = await fetch("/api/garden");
+    const isLocal = window.location.hostname === 'localhost';
+    const apiUrl = isLocal
+      ? '/api/garden'
+      : 'https://gardenpi.duckdns.org';
+
+    const response = await fetch(apiUrl);
     const text = await response.text();
 
-    // Try to parse JSON manually
     let liveData;
     try {
       liveData = JSON.parse(text);
-    } catch (jsonErr) {
+    } catch {
       console.error("Invalid JSON response:", text.slice(0, 200));
       throw new Error("Invalid JSON response from gardenpi");
     }
@@ -64,6 +68,7 @@ const fetchCurrentData = useCallback(async () => {
     });
   }
 }, []);
+
   
   // Function to fetch historical sensor data
   //const fetchHistoricalData = useCallback(async (days = 7) => {
