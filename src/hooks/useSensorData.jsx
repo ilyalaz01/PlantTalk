@@ -22,7 +22,7 @@ const [currentData, setCurrentData] = useState({
   // Function to fetch current sensor readings
   const fetchCurrentData = useCallback(async () => {
   try {
-    const response = await fetch('/api/garden');
+    const response = await fetch("/api/garden/");
     const liveData = await response.json();
     if (!liveData || !liveData.temperature || !liveData.humidity || !liveData.soil) {
       throw new Error("Incomplete sensor data");
