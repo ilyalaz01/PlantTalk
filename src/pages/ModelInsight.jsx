@@ -145,9 +145,9 @@ const ModelInsights = () => {
             Light: {safeCurrentData.light ?? 'N/A'} ({safeEnvironmentalHealth.light})
           </StatItem>
         </StatList>
-        <StatItem>
-          Last Updated: {safeCurrentData.lastUpdated?.toLocaleTimeString() ?? 'N/A'}
-        </StatItem>
+      <StatItem>
+        Last Updated: {safeCurrentData.lastUpdated ? new Date(safeCurrentData.lastUpdated).toLocaleTimeString() : 'N/A'}
+      </StatItem>
       </Section>
 
       <h2>Ecological Model Insights</h2>
