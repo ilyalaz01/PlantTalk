@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import svgr from 'vite-plugin-svgr' // Import the SVGR plugin
+import svgr from 'vite-plugin-svgr'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -8,8 +8,13 @@ export default defineConfig({
     react(), // Enable React support
     svgr()   // Enable SVGR support (import SVGs as React components)
   ],
-  // Optional: If you need to configure a specific port for the dev server
-  // server: {
-  //   port: 3000,
-  // }
+  server: {
+    proxy: {
+      '/api/garden': {
+        target: 'https://gardenpi.duckdns.org',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/garden/, '')
+      }
+    }
+  }
 })

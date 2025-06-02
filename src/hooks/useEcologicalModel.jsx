@@ -1,6 +1,6 @@
 // src/hooks/useEcologicalModel.js
 import { useState, useEffect } from 'react';
-import { useSensor } from '../contexts/SensorContext';
+import useSensorData from '../hooks/useSensorData';
 import { usePlant } from '../contexts/PlantContext';
 
 /**
@@ -11,8 +11,8 @@ import { usePlant } from '../contexts/PlantContext';
  * 2. Weather integration model
  * 3. Mechanistic model (soil moisture depletion)
  */
-const useEcologicalModel = () => {
-  const { sensorData, sensorHistory } = useSensor();
+const useEcologicalModel = (sensorDataHook) => {
+  const { currentData: sensorData, historicalData: sensorHistory } = sensorDataHook;
   const { plant } = usePlant();
   
   const [plantStatus, setPlantStatus] = useState('healthy');

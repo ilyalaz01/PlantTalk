@@ -1,19 +1,19 @@
 // src/hooks/useSensorData.js
 import { useState, useEffect, useCallback } from 'react';
 import { fetchSensorData, fetchSensorHistory } from '../services/sensorService';
-
 /**
  * Custom hook for fetching and processing sensor data
  * This hook handles both real-time data and historical data
  */
 const useSensorData = (plantId, refreshInterval = 30000) => {
-  const [currentData, setCurrentData] = useState({
-    soilMoisture: 50,
-    temperature: 72,
-    humidity: 55, 
-    light: 65,
-    lastUpdated: new Date()
-  });
+const [currentData, setCurrentData] = useState({
+  soilMoisture: 0,
+  temperature: 0,
+  humidity: 0,
+  light: 0,
+  lastUpdated: null
+});
+
   
   const [historicalData, setHistoricalData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,45 +21,32 @@ const useSensorData = (plantId, refreshInterval = 30000) => {
   
   // Function to fetch current sensor readings
   const fetchCurrentData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("https://gardenpi.duckdns.org/");
-      const liveData = await response.json();
-
-      // In a real app, this would call the API
-      // const data = await fetchSensorData(plantId);
-      
-      // For demo purposes, generate simulated data
-      const simulatedData = {
-        soilMoisture: Math.max(10, Math.min(90, currentData.soilMoisture + (Math.random() * 4 - 2))),
-        temperature: Math.max(60, Math.min(85, currentData.temperature + (Math.random() * 2 - 1))),
-        humidity: Math.max(30, Math.min(80, currentData.humidity + (Math.random() * 3 - 1.5))),
-        light: Math.max(10, Math.min(90, currentData.light + (Math.random() * 5 - 2.5))),
-        lastUpdated: new Date()
-      };
-      
-
-      const roundedData = {
-        soilMoisture: Math.round(liveData.soil.percent),
-        temperature: Math.round(liveData.temperature.value * 10) / 10,
-        humidity: Math.round(liveData.humidity.value),
-        light: Math.round(liveData.light.value || 65), // fallback or add logic for light if missing
-        lastUpdated: new Date()
-      };
-
-      setCurrentData(roundedData);
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching sensor data:', err);
-      setError('Failed to fetch current sensor data');
-      setLoading(false);
+  try {
+    const response = await fetch("/api/garden/");
+    const liveData = await response.json();
+    if (!liveData || !liveData.temperature || !liveData.humidity || !liveData.soil) {
+      throw new Error("Incomplete sensor data");
     }
-  }, [plantId, currentData]);
+
+    const roundedData = {
+      soilMoisture: Math.round(liveData?.soil?.percent ?? 0),
+      temperature: Math.round((liveData?.temperature?.value ?? 0) * 10) / 10,
+      humidity: Math.round(liveData?.humidity?.value ?? 0),
+      light: 65, // still hardcoded unless you have real light data
+      lastUpdated: new Date()
+    };
+
+    setCurrentData(roundedData);
+  } catch (err) {
+    console.error("Error fetching real-time data:", err);
+    setCurrentData(null);
+  }
+}, []);
   
   // Function to fetch historical sensor data
-  const fetchHistoricalData = useCallback(async (days = 7) => {
-    try {
-      setLoading(true);
+  //const fetchHistoricalData = useCallback(async (days = 7) => {
+    //try {
+      //setLoading(true);
       
       // In a real app, this would call the API
       // const data = await fetchSensorHistory(plantId, {
@@ -69,29 +56,56 @@ const useSensorData = (plantId, refreshInterval = 30000) => {
       // });
       
       // For demo purposes, generate simulated historical data
-      const simulatedHistory = [];
-      for (let i = days; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        
-        simulatedHistory.push({
-          timestamp: date,
-          soilMoisture: 70 - i * 3 + Math.floor(Math.random() * 10),
-          temperature: 72 + Math.floor(Math.random() * 4 - 2),
-          humidity: 55 + Math.floor(Math.random() * 10 - 5),
-          light: 65 + Math.floor(Math.random() * 10 - 5)
-        });
-      }
-      
-      setHistoricalData(simulatedHistory);
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching sensor history:', err);
-      setError('Failed to fetch historical sensor data');
-      setLoading(false);
-    }
-  }, [plantId]);
-  
+      //const simulatedHistory = [];
+      //for (let i = days; i >= 0; i--) {
+        //const date = new Date();
+       // date.setDate(date.getDate() - i);
+      //  
+     //   simulatedHistory.push({
+    //      timestamp: date,
+   //       soilMoisture: 70 - i * 3 + Math.floor(Math.random() * 10),
+  //        temperature: 72 + Math.floor(Math.random() * 4 - 2),
+  //        humidity: 55 + Math.floor(Math.random() * 10 - 5),
+ //         light: 65 + Math.floor(Math.random() * 10 - 5)
+//       });
+//    }
+ //     
+ //     setHistoricalData(simulatedHistory);
+ //     setLoading(false);
+ //   } catch (err) {
+ //     console.error('Error fetching sensor history:', err);
+ //     setError('Failed to fetch historical sensor data');
+ //     setLoading(false);
+ //   }
+ // }, [plantId]);
+
+
+  const fetchHistoricalData = useCallback(async (days = 7) => {
+  try {
+    setLoading(true);
+    const data = await fetchSensorHistory();
+
+    // Map it if needed
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+
+    const filtered = data
+      .filter(entry => new Date(entry.timestamp) >= cutoff)
+      .map(entry => ({
+        timestamp: entry.timestamp,
+        soilMoisture: entry.soilMoisture // ← should match your parsed object key
+      }));
+
+    setHistoricalData(filtered);
+  } catch (err) {
+    console.error('Error fetching sensor history:', err);
+    setError('Failed to fetch historical sensor data');
+  } finally {
+    setLoading(false);
+  }
+}, []);
+
+
   // Calculate sensor trends
   const calculateTrends = useCallback(() => {
     if (historicalData.length < 2) {
@@ -190,15 +204,8 @@ const useSensorData = (plantId, refreshInterval = 30000) => {
   
   // Initial data fetch on mount
   useEffect(() => {
-    fetchCurrentData();
-    fetchHistoricalData();
-    
-    // Set up polling interval for real-time data
-    const interval = setInterval(() => {
-      fetchCurrentData();
-    }, refreshInterval);
-    
-    // Clean up on unmount
+    fetchCurrentData(); // ✅ Fetch immediately
+    const interval = setInterval(fetchCurrentData, refreshInterval);
     return () => clearInterval(interval);
   }, [fetchCurrentData, fetchHistoricalData, refreshInterval]);
   

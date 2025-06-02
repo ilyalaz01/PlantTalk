@@ -1,9 +1,19 @@
 // src/pages/ModelInsights.jsx
-import React from 'react';
 import styled from 'styled-components';
 import useEcologicalModel from '../hooks/useEcologicalModel';
 import useSensorData from '../hooks/useSensorData';
 import useModelPrediction from '../hooks/useModelPrediction';
+import {
+  LineChart,
+  Line,
+  Legend,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from 'recharts';
+import React, { useEffect } from 'react';
 
 const InsightsContainer = styled.div`
   max-width: 800px;
@@ -42,58 +52,22 @@ const RecommendationCard = styled.div`
 `;
 
 const ModelInsights = () => {
-  const {
-    plantStatus,
+const sensorDataHook = useSensorData();
+const { currentData, fetchHistory, historicalData } = sensorDataHook;
+
+useEffect(() => {
+  fetchHistory(7);
+}, []);
+  const ecologicalModel = useEcologicalModel(sensorDataHook);
+  const {plantStatus,
     environmentalHealth,
     moistureDepletionRate,
     daysUntilWaterNeeded,
-    careRecommendations
-  } = useEcologicalModel();
-const { currentData } = useSensorData();
+    careRecommendations } = ecologicalModel;
   const { prediction, pcaInfo } = useModelPrediction(currentData);
 
   return (
     <InsightsContainer>
-      <h2>Ecological Model Insights</h2>
-
-      <Section>
-        <SectionTitle>🌿 Model Status Prediction</SectionTitle>
-        <StatItem>
-          Predicted Status: <strong>{prediction || 'Loading...'}</strong>
-        </StatItem>
-        {pcaInfo && (
-          <>
-            <StatItem>
-              PCA Components: {pcaInfo.components.map((val, i) => (
-                <span key={i}><strong>PC{i+1}:</strong> {val.toFixed(2)} </span>
-              ))}
-            </StatItem>
-            <StatItem>
-              Explained Variance: {pcaInfo.explainedVariance.map((v, i) => (
-                <span key={i}><strong>PC{i+1}:</strong> {(v * 100).toFixed(1)}% </span>
-              ))}
-            </StatItem>
-          </>
-        )}
-      </Section>
-
-      <Section>
-        <SectionTitle>🌱 Plant Status</SectionTitle>
-        <StatItem>Current Status: <strong>{plantStatus}</strong></StatItem>
-        <StatItem>Estimated Days Until Water Needed: <strong>{daysUntilWaterNeeded}</strong></StatItem>
-        <StatItem>Moisture Depletion Rate: <strong>{moistureDepletionRate.toFixed(2)} %/day</strong></StatItem>
-      </Section>
-
-      <Section>
-        <SectionTitle>🌤️ Environmental Health</SectionTitle>
-        <StatList>
-          <StatItem>Moisture: {environmentalHealth.moisture}</StatItem>
-          <StatItem>Temperature: {environmentalHealth.temperature}</StatItem>
-          <StatItem>Humidity: {environmentalHealth.humidity}</StatItem>
-          <StatItem>Light: {environmentalHealth.light}</StatItem>
-        </StatList>
-      </Section>
-
       <Section>
         <SectionTitle>🧪 Care Recommendations</SectionTitle>
         {careRecommendations.map((rec, index) => (
@@ -104,6 +78,70 @@ const { currentData } = useSensorData();
           </RecommendationCard>
         ))}
       </Section>
+      <Section>
+        <SectionTitle>🌡️ Environmental Summary & Care</SectionTitle>
+        <StatList>
+          <StatItem>Soil Moisture: {currentData?.soilMoisture}% ({environmentalHealth.moisture})</StatItem>
+          <StatItem>Temperature: {currentData?.temperature}°C ({environmentalHealth.temperature})</StatItem>
+          <StatItem>Humidity: {currentData?.humidity}% ({environmentalHealth.humidity})</StatItem>
+          <StatItem>Light: {currentData?.light ?? 'N/A'} ({environmentalHealth.light})</StatItem>
+        </StatList>
+        <StatItem>
+        Last Updated: {currentData?.lastUpdated?.toLocaleTimeString() ?? 'N/A'}
+      </StatItem>
+      </Section>
+      <h2>Ecological Model Insights</h2>
+      <Section>
+        <SectionTitle>🌱 Plant Status</SectionTitle>
+        <StatItem>Current Status: <strong>{plantStatus}</strong></StatItem>
+        <StatItem>Estimated Days Until Water Needed: <strong>{daysUntilWaterNeeded}</strong></StatItem>
+        <StatItem>Moisture Depletion Rate: <strong>{moistureDepletionRate.toFixed(2)} %/day</strong></StatItem>
+        <small>Powered by: Combined Mechanistic & Rule-Based Models</small>
+      </Section>
+      <Section>
+        <SectionTitle>🌿 Model Diagnosis</SectionTitle>
+        <StatItem>
+          Diagnosis: <strong>{prediction || 'Loading...'}</strong>
+          
+        </StatItem>
+        {pcaInfo && (
+          <>
+           <StatItem>
+              PCA Components: {pcaInfo.components.map((val, i) => (
+                <span key={i}><strong>PC{i+1}:</strong> {val.toFixed(2)} </span>
+                
+              ))}
+              
+            </StatItem>
+            <StatItem>
+              Explained Variance: {pcaInfo.explainedVariance.map((v, i) => (
+                <span key={i}><strong>PC{i+1}:</strong> {(v * 100).toFixed(1)}% </span>
+              ))}
+            </StatItem>
+          </>
+        )}
+        <small>Powered by: PCA + Decision Tree Model</small>
+      </Section>
+      <Section>
+      <SectionTitle>📉 Soil Moisture Trend </SectionTitle>
+      {sensorDataHook.historicalData.length > 0 ? (
+        <ResponsiveContainer width="100%" height={250}>
+          <LineChart data={sensorDataHook.historicalData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis
+              dataKey="timestamp"
+              tickFormatter={(str) => new Date(str).toLocaleDateString()}
+            />
+            <YAxis domain={[0, 100]} />
+            <Tooltip />
+            <Legend />
+            <Line type="monotone" dataKey="soilMoisture" stroke="#8884d8" dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      ) : (
+        <p>No historical data available.</p>
+      )}
+    </Section>
     </InsightsContainer>
   );
 };
