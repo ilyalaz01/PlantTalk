@@ -42,110 +42,128 @@ export const getSoilMoistureDepletion = async (plantId) => {
   return fetchWithAuth(`/plants/${plantId}/moisture-depletion`);
 };
 
-// ==== Google Sheets Sensor History (for real data logging) ====
+// ==== Google Sheets Sensor History (CORS-friendly version) ====
 
 const SHEET_ID = '1kRgZwsISHOaA0EtDxQPibWbpdy-TMQnD7nsmjhAXNWo';
-const SHEET_NAME = 'Basil Logger'; // Sheet tab name
 
 export const fetchSensorHistory = async () => {
   try {
-    // Use Google Sheets JSON API endpoint (this is what returns the JSON with row.c structure)
-    const jsonUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
+    // Use CSV export which is more CORS-friendly than JSON API
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
     
-    const response = await fetch(jsonUrl);
+    // Add mode: 'cors' to handle CORS properly
+    const response = await fetch(csvUrl, {
+      method: 'GET',
+      mode: 'cors',
+      headers: {
+        'Accept': 'text/csv,text/plain,*/*',
+        'Cache-Control': 'no-cache'
+      }
+    });
+    
     if (!response.ok) {
-      throw new Error(`Failed to fetch data: ${response.statusText}`);
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     
-    const text = await response.text();
-    console.log('Raw response:', text.substring(0, 200) + '...');
+    const csvText = await response.text();
+    console.log('CSV Response received:', csvText.substring(0, 200));
     
-    // Google returns JSON wrapped in JS callback: "google.visualization.Query.setResponse(...)"
-    // Extract the JSON part
-    const jsonStart = text.indexOf('(') + 1;
-    const jsonEnd = text.lastIndexOf(')');
-    const jsonString = text.substring(jsonStart, jsonEnd);
-    
-    const json = JSON.parse(jsonString);
-    console.log('Parsed JSON:', json);
-    
-    // Check if we have table data
-    if (!json.table || !json.table.rows) {
-      throw new Error('No table data found in response');
+    // Parse CSV data
+    const lines = csvText.trim().split('\n');
+    if (lines.length <= 1) {
+      throw new Error('No data rows found in CSV');
     }
     
-    const rows = json.table.rows;
-    
-    // Map the rows to your data format
-    const mappedData = rows.map(row => {
-      // Handle cases where cells might be null or undefined
-      const cells = row.c || [];
-      const [timestampCell, moistureCell, temperatureCell, humidityCell] = cells;
-      
-      // Skip rows with missing essential data
-      if (!timestampCell || !moistureCell || !temperatureCell || !humidityCell) {
+    // Skip header row and parse data
+    const dataRows = lines.slice(1).map((line, index) => {
+      try {
+        // Handle CSV with potential commas in values
+        const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(',');
+        const cleanValues = values.map(val => val.replace(/"/g, '').trim());
+        
+        const [timestamp, moisture, temperature, humidity] = cleanValues;
+        
+        if (!timestamp || !moisture || !temperature || !humidity) {
+          console.warn(`Skipping row ${index + 2}: missing data`, cleanValues);
+          return null;
+        }
+        
+        const parsedData = {
+          timestamp: new Date(timestamp),
+          soilMoisture: parseFloat(moisture),
+          temperature: parseFloat(temperature),
+          humidity: parseFloat(humidity),
+          light: 65
+        };
+        
+        // Validate parsed data
+        if (isNaN(parsedData.timestamp.getTime()) || 
+            isNaN(parsedData.soilMoisture) || 
+            isNaN(parsedData.temperature) || 
+            isNaN(parsedData.humidity)) {
+          console.warn(`Skipping row ${index + 2}: invalid data`, parsedData);
+          return null;
+        }
+        
+        return parsedData;
+      } catch (error) {
+        console.warn(`Error parsing row ${index + 2}:`, error, line);
         return null;
       }
-      
-      return {
-        timestamp: new Date(timestampCell.v),
-        soilMoisture: Number(moistureCell.v),
-        temperature: Number(temperatureCell.v),
-        humidity: Number(humidityCell.v),
-        light: 65, // Optional fallback
-      };
-    }).filter(row => row !== null && !isNaN(row.timestamp.getTime())); // Filter out null rows and invalid dates
+    }).filter(row => row !== null);
     
-    console.log('Mapped data:', mappedData);
-    return mappedData;
+    console.log(`Successfully parsed ${dataRows.length} rows from CSV`);
+    return dataRows;
     
   } catch (error) {
     console.error('Error fetching sensor history:', error);
     
-    // Try alternative URL format (without sheet name)
-    try {
-      const alternativeUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=0`;
+    // If CORS is still blocking, try using a CORS proxy (not recommended for production)
+    if (error.message.includes('CORS') || error instanceof TypeError) {
+      console.warn('CORS error detected. Falling back to alternative method...');
       
-      const response = await fetch(alternativeUrl);
-      if (!response.ok) {
-        throw new Error(`Alternative fetch failed: ${response.statusText}`);
-      }
-      
-      const text = await response.text();
-      const jsonStart = text.indexOf('(') + 1;
-      const jsonEnd = text.lastIndexOf(')');
-      const jsonString = text.substring(jsonStart, jsonEnd);
-      
-      const json = JSON.parse(jsonString);
-      
-      if (!json.table || !json.table.rows) {
-        throw new Error('No table data found in alternative response');
-      }
-      
-      const rows = json.table.rows;
-      
-      return rows.map(row => {
-        const cells = row.c || [];
-        const [timestampCell, moistureCell, temperatureCell, humidityCell] = cells;
+      try {
+        // Alternative: Try the JSON API with a CORS proxy (use sparingly)
+        const proxyUrl = 'https://api.allorigins.win/get?url=';
+        const targetUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=0`;
+        const proxiedUrl = proxyUrl + encodeURIComponent(targetUrl);
         
-        if (!timestampCell || !moistureCell || !temperatureCell || !humidityCell) {
-          return null;
+        const proxyResponse = await fetch(proxiedUrl);
+        const proxyData = await proxyResponse.json();
+        
+        if (proxyData.contents) {
+          const text = proxyData.contents;
+          const jsonStart = text.indexOf('(') + 1;
+          const jsonEnd = text.lastIndexOf(')');
+          const jsonString = text.substring(jsonStart, jsonEnd);
+          const json = JSON.parse(jsonString);
+          
+          if (json.table && json.table.rows) {
+            return json.table.rows.map(row => {
+              const cells = row.c || [];
+              const [timestampCell, moistureCell, temperatureCell, humidityCell] = cells;
+              
+              if (!timestampCell || !moistureCell || !temperatureCell || !humidityCell) {
+                return null;
+              }
+              
+              return {
+                timestamp: new Date(timestampCell.v),
+                soilMoisture: Number(moistureCell.v),
+                temperature: Number(temperatureCell.v),
+                humidity: Number(humidityCell.v),
+                light: 65,
+              };
+            }).filter(row => row !== null);
+          }
         }
-        
-        return {
-          timestamp: new Date(timestampCell.v),
-          soilMoisture: Number(moistureCell.v),
-          temperature: Number(temperatureCell.v),
-          humidity: Number(humidityCell.v),
-          light: 65,
-        };
-      }).filter(row => row !== null && !isNaN(row.timestamp.getTime()));
-      
-    } catch (alternativeError) {
-      console.error('Alternative fetch also failed:', alternativeError);
-      
-      // Return empty array instead of hardcoded data
-      return [];
+      } catch (proxyError) {
+        console.error('Proxy method also failed:', proxyError);
+      }
     }
+    
+    // Return empty array instead of throwing
+    console.warn('Returning empty array due to fetch failure');
+    return [];
   }
 };
