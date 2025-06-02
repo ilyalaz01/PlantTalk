@@ -20,18 +20,32 @@ const [currentData, setCurrentData] = useState({
   const [error, setError] = useState(null);
   
   // Function to fetch current sensor readings
-  const fetchCurrentData = useCallback(async () => {
+const fetchCurrentData = useCallback(async () => {
   try {
     const response = await fetch("/api/garden/");
+    const contentType = response.headers.get("content-type");
+
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text(); // read as string for debugging
+      console.error("Invalid JSON response:", text.slice(0, 200));
+      throw new Error("Invalid JSON response from gardenpi");
+    }
+
     const liveData = await response.json();
-    if (!liveData || !liveData.temperature || !liveData.humidity || !liveData.soil) {
+
+    if (
+      !liveData ||
+      typeof liveData.temperature?.value !== "number" ||
+      typeof liveData.humidity?.value !== "number" ||
+      typeof liveData.soil?.percent !== "number"
+    ) {
       throw new Error("Incomplete sensor data");
     }
 
     const roundedData = {
-      soilMoisture: Math.round(liveData?.soil?.percent ?? 0),
-      temperature: Math.round((liveData?.temperature?.value ?? 0) * 10) / 10,
-      humidity: Math.round(liveData?.humidity?.value ?? 0),
+      soilMoisture: Math.round(liveData.soil.percent),
+      temperature: Math.round(liveData.temperature.value * 10) / 10,
+      humidity: Math.round(liveData.humidity.value),
       light: 65, // still hardcoded unless you have real light data
       lastUpdated: new Date()
     };
@@ -39,7 +53,15 @@ const [currentData, setCurrentData] = useState({
     setCurrentData(roundedData);
   } catch (err) {
     console.error("Error fetching real-time data:", err);
-    setCurrentData(null);
+
+    // Prevent crashing due to null access
+    setCurrentData({
+      soilMoisture: 0,
+      temperature: 0,
+      humidity: 0,
+      light: 0,
+      lastUpdated: null
+    });
   }
 }, []);
   
