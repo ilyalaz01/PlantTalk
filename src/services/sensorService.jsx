@@ -38,6 +38,9 @@ const SHEET_ID = '1kRgZwsISHOaA0EtDxQPibWbpdy-TMQnD7nsmjhAXNWo';
 const SHEET_NAME = 'Basil Logger';
 
 const parseGoogleSheetJSON = (text) => {
+  if (!text.trim().startsWith('google.visualization.Query.setResponse(')) {
+    throw new Error('Invalid response: Expected Google Sheets JSON format');
+  }
   const jsonStart = text.indexOf('(') + 1;
   const jsonEnd = text.lastIndexOf(')');
   const jsonString = text.substring(jsonStart, jsonEnd);
@@ -46,7 +49,7 @@ const parseGoogleSheetJSON = (text) => {
 
 const parseSensorRows = (rows) =>
   rows
-    .map(row => {
+    .map((row) => {
       const cells = row.c || [];
       const [timestampCell, moistureCell, temperatureCell, humidityCell] = cells;
 
@@ -70,7 +73,14 @@ const parseSensorRows = (rows) =>
         light: 65,
       };
     })
-    .filter(row => row !== null);
+    .filter(
+      (row) =>
+        row &&
+        typeof row.temperature === 'number' &&
+        !isNaN(row.temperature) &&
+        typeof row.soilMoisture === 'number' &&
+        typeof row.humidity === 'number'
+    );
 
 export const fetchSensorHistory = async () => {
   const urls = [
@@ -82,10 +92,13 @@ export const fetchSensorHistory = async () => {
     try {
       const response = await fetch(url);
       if (!response.ok) throw new Error(`Fetch failed: ${response.statusText}`);
+
       const text = await response.text();
       const json = parseGoogleSheetJSON(text);
 
-      if (!json.table || !json.table.rows) throw new Error('No table data in response');
+      if (!json.table || !json.table.rows) {
+        throw new Error('No table data in response');
+      }
 
       return parseSensorRows(json.table.rows);
     } catch (err) {
@@ -93,5 +106,5 @@ export const fetchSensorHistory = async () => {
     }
   }
 
-  return []; // fallback in case both attempts fail
+  return []; // fallback: empty data
 };
