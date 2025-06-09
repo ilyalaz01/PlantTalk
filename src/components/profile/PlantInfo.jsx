@@ -2,6 +2,8 @@
 import React from 'react';
 import styled from 'styled-components';
 import { usePlant } from '../../contexts/PlantContext';
+import useEcologicalModel from '../../hooks/useEcologicalModel';
+import useSensorData from '../../hooks/useSensorData';
 
 const InfoContainer = styled.div`
   background-color: ${({ theme }) => theme.colors.surface};
@@ -147,6 +149,10 @@ const getStatusDetails = (status) => {
       return { text: 'Too Cold', icon: '❄️' };
     case 'hot':
       return { text: 'Too Hot', icon: '🔥' };
+    case 'overwatered':
+      return { text: 'Too Wet', icon: '🌊' };
+    case 'stressed':
+      return { text: 'Stressed', icon: '⚠️' };
     default:
       return { text: 'Healthy', icon: '✅' };
   }
@@ -154,8 +160,9 @@ const getStatusDetails = (status) => {
 
 const PlantInfo = () => {
   const { plant } = usePlant();
-  const statusDetails = getStatusDetails(plant.status);
-  
+  const ecologicalModel = useEcologicalModel(useSensorData());
+
+  const statusDetails = getStatusDetails(ecologicalModel.plantStatus);
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -172,7 +179,7 @@ const PlantInfo = () => {
           <PlantName>{plant.name}</PlantName>
           <PlantSpecies>{plant.species}</PlantSpecies>
         </NameSection>
-        <StatusBadge status={plant.status}>
+        <StatusBadge status={ecologicalModel.plantStatus}>
           <StatusIcon>{statusDetails.icon}</StatusIcon>
           {statusDetails.text}
         </StatusBadge>
@@ -193,25 +200,37 @@ const PlantInfo = () => {
         </DetailItem>
       </DetailsList>
       
-      <CareInfoList>
-        <CareInfoTitle>Care Requirements</CareInfoTitle>
-        <CareInfoItem>
-          <CareInfoIcon>💧</CareInfoIcon>
-          <CareInfoText>Water {plant.careSchedule.watering}</CareInfoText>
-        </CareInfoItem>
-        <CareInfoItem>
-          <CareInfoIcon>☀️</CareInfoIcon>
-          <CareInfoText>Needs {plant.careSchedule.sunlight}</CareInfoText>
-        </CareInfoItem>
-        <CareInfoItem>
-          <CareInfoIcon>🌡️</CareInfoIcon>
-          <CareInfoText>Optimal temperature: {plant.careSchedule.optimalTemperature}</CareInfoText>
-        </CareInfoItem>
-        <CareInfoItem>
-          <CareInfoIcon>💦</CareInfoIcon>
-          <CareInfoText>Optimal humidity: {plant.careSchedule.optimalHumidity}</CareInfoText>
-        </CareInfoItem>
-      </CareInfoList>
+    <CareInfoList>
+      <CareInfoTitle>Environment Status</CareInfoTitle>
+
+      <CareInfoItem>
+        <CareInfoIcon>💧</CareInfoIcon>
+        <CareInfoText>
+          Moisture level is <strong>{ecologicalModel.environmentalHealth.moisture}</strong>
+        </CareInfoText>
+      </CareInfoItem>
+
+      <CareInfoItem>
+        <CareInfoIcon>☀️</CareInfoIcon>
+        <CareInfoText>
+          Light level is <strong>{ecologicalModel.environmentalHealth.light}</strong>
+        </CareInfoText>
+      </CareInfoItem>
+
+      <CareInfoItem>
+        <CareInfoIcon>🌡️</CareInfoIcon>
+        <CareInfoText>
+          Temperature is <strong>{ecologicalModel.environmentalHealth.temperature}</strong>
+        </CareInfoText>
+      </CareInfoItem>
+
+      <CareInfoItem>
+        <CareInfoIcon>💦</CareInfoIcon>
+        <CareInfoText>
+          Humidity is <strong>{ecologicalModel.environmentalHealth.humidity}</strong>
+        </CareInfoText>
+      </CareInfoItem>
+    </CareInfoList>
     </InfoContainer>
   );
 };

@@ -1,5 +1,5 @@
 // src/pages/Dashboard.js
-import React from 'react';
+import React, { useEffect } from 'react';
 import styled from 'styled-components';
 import PlantAvatar from '../components/dashboard/PlantAvatar';
 import SpeechBubble from '../components/dashboard/SpeechBubble';
@@ -7,7 +7,7 @@ import SensorGauge from '../components/dashboard/SensorGauge';
 import ActionButton from '../components/dashboard/ActionButton';
 import StreakCalendar from '../components/dashboard/StreakCalendar';
 import WeatherWidget from '../components/dashboard/WeatherWidget';
-import { useSensor } from '../contexts/SensorContext';
+import useSensorData from '../hooks/useSensorData';
 import { usePlant } from '../contexts/PlantContext';
 
 const DashboardContainer = styled.div`
@@ -60,13 +60,29 @@ const ErrorMessage = styled.div`
 `;
 
 const Dashboard = () => {
-  const { sensorData, loading: sensorLoading, error: sensorError } = useSensor();
+  // Use REAL sensor data from Railway API - not mock data!
+  const sensorDataHook = useSensorData();
+  const { currentData, fetchHistory, historicalData, loading, error } = sensorDataHook;
+  
   const { plant, loading: plantLoading, error: plantError } = usePlant();
+  
+  useEffect(() => {
+    fetchHistory(7);
+  }, []);
+  
+  // REAL sensor data from Railway API: temperature, humidity, soil moisture  
+  const realSensorData = currentData || {
+    soilMoisture: 0,
+    temperature: 0,
+    humidity: 0,
+    light: 65, // hardcoded as per useSensorData
+    lastUpdated: null
+  };
   
   // Get user's name - in a real app, this would come from a user context or profile
   const userName = "Yelena";
   
-  if (sensorLoading || plantLoading) {
+  if (loading || plantLoading) {
     return (
       <DashboardContainer>
         <LoadingIndicator>
@@ -76,11 +92,13 @@ const Dashboard = () => {
     );
   }
   
-  if (sensorError || plantError) {
+  if (error || plantError) {
     return (
       <DashboardContainer>
         <ErrorMessage>
           Sorry, we couldn't load your plant data. Please try again later.
+          <br />
+          <small>Error: {error?.message || plantError || 'Unknown error occurred'}</small>
         </ErrorMessage>
       </DashboardContainer>
     );
@@ -90,28 +108,29 @@ const Dashboard = () => {
     <DashboardContainer>
       <WelcomeMessage>Welcome back, {userName}!</WelcomeMessage>
       
-      <PlantAvatar />
-      <SpeechBubble />
+      {/* Pass REAL sensor data from Railway API to PlantAvatar */}
+      <PlantAvatar plant={plant} sensorData={realSensorData} />
+      <SpeechBubble plant={plant} sensorData={realSensorData} />
       
       <SensorGrid>
         <SensorGauge 
           type="moisture" 
-          value={sensorData.soilMoisture} 
+          value={realSensorData.soilMoisture ?? 0} 
           title="Soil Moisture" 
         />
         <SensorGauge 
           type="temperature" 
-          value={sensorData.temperature} 
+          value={realSensorData.temperature ?? 0} 
           title="Temperature" 
         />
         <SensorGauge 
           type="humidity" 
-          value={sensorData.humidity} 
+          value={realSensorData.humidity ?? 0} 
           title="Humidity" 
         />
         <SensorGauge 
           type="light" 
-          value={sensorData.light} 
+          value={realSensorData.light ?? 0} 
           title="Light Level" 
         />
       </SensorGrid>
@@ -119,7 +138,7 @@ const Dashboard = () => {
       <ActionButton />
       
       <BottomSection>
-        <StreakCalendar streak={plant.streak} careHistory={plant.careHistory} />
+        <StreakCalendar streak={plant?.streak || 0} careHistory={plant?.careHistory || []} />
         <WeatherWidget />
       </BottomSection>
     </DashboardContainer>

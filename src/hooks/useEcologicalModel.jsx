@@ -34,7 +34,7 @@ const useEcologicalModel = (sensorDataHook) => {
   // Run conceptual model to determine plant status and environment health
     const runConceptualModel = () => {
     const { soilMoisture: moisture, temperature: temp, humidity, light } = sensorData;
-    // 🌱 Data-driven label logic based on research
+    // 🌱 Data-driven rule based model based on research
     let status;
     if (moisture < 30 || (temp > 32 && humidity < 40)) {
       status = 'thirsty';

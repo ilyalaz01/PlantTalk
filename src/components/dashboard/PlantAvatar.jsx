@@ -4,6 +4,8 @@ import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { usePlant } from '../../contexts/PlantContext';
 import { useSensor } from '../../contexts/SensorContext';
+import useSensorData from '../../hooks/useSensorData';
+import useEcologicalModel from '../../hooks/useEcologicalModel';
 
 // Container for the entire avatar
 const AvatarContainer = styled.div`

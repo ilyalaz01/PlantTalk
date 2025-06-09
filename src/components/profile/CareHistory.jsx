@@ -1,8 +1,8 @@
 // src/components/profile/CareHistory.js
-import React from 'react';
+import React, { useEffect } from 'react';
 import styled from 'styled-components';
 import { usePlant } from '../../contexts/PlantContext';
-import { useSensor } from '../../contexts/SensorContext';
+import useSensorData from '../../hooks/useSensorData'; // Using real sensor data hook
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const HistoryContainer = styled.div`
@@ -120,10 +120,27 @@ const NoDataMessage = styled.div`
   font-size: ${({ theme }) => theme.typography.fontSize.md};
 `;
 
+const LoadingMessage = styled.div`
+  text-align: center;
+  padding: ${({ theme }) => theme.spacing.lg};
+  color: ${({ theme }) => theme.colors.text.secondary};
+  font-style: italic;
+`;
+
 const CareHistory = () => {
   const [activeTab, setActiveTab] = React.useState('moisture');
   const { plant } = usePlant();
-  const { sensorHistory } = useSensor();
+  
+  // Use real sensor data hook (same as ModelInsights)
+  const sensorDataHook = useSensorData();
+  const { currentData, fetchHistory, historicalData, loading, error } = sensorDataHook;
+
+  useEffect(() => {
+    fetchHistory(7); // Fetch 7 days of historical data
+  }, []);
+
+  // Safe data access with fallbacks (same as ModelInsights)
+  const safeHistoricalData = historicalData || [];
   
   // Format date for chart display
   const formatDate = (dateString) => {
@@ -142,14 +159,14 @@ const CareHistory = () => {
     });
   };
   
-  // Format chart data
+  // Format chart data - now using real historical data
   const getChartData = () => {
-    return sensorHistory.map(record => ({
+    return safeHistoricalData.map(record => ({
       date: formatDate(record.timestamp),
       moisture: record.soilMoisture,
       temperature: record.temperature,
       humidity: record.humidity,
-      light: record.light,
+      light: record.light || 65, // Fallback for light if not available
       // Add watering events as markers
       watered: getWateredValue(record.timestamp)
     }));
@@ -157,7 +174,7 @@ const CareHistory = () => {
   
   // Check if plant was watered on a specific date
   const getWateredValue = (date) => {
-    const wasWatered = plant.careHistory.some(event => 
+    const wasWatered = plant?.careHistory?.some(event => 
       event.action === 'watered' && 
       new Date(event.date).toDateString() === new Date(date).toDateString()
     );
@@ -224,12 +241,24 @@ const CareHistory = () => {
       </TabsContainer>
       
       <ChartContainer>
-        {chartData.length > 0 ? (
+        {loading && (
+          <LoadingMessage>
+            Loading historical data...
+          </LoadingMessage>
+        )}
+        
+        {error && (
+          <NoDataMessage>
+            Error loading data: {error.message || 'Unknown error occurred'}
+          </NoDataMessage>
+        )}
+        
+        {!loading && !error && chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
-              <YAxis />
+              <YAxis domain={[0, 100]} />
               <Tooltip />
               <Legend />
               
@@ -242,6 +271,7 @@ const CareHistory = () => {
                     stroke="#4CAF50" 
                     activeDot={{ r: 8 }} 
                     strokeWidth={2}
+                    dot={false}
                   />
                   <Line 
                     type="monotone" 
@@ -258,10 +288,11 @@ const CareHistory = () => {
                 <Line 
                   type="monotone" 
                   dataKey="temperature" 
-                  name="Temperature (°F)" 
+                  name="Temperature (°C)" 
                   stroke="#F44336" 
                   activeDot={{ r: 8 }} 
                   strokeWidth={2}
+                  dot={false}
                 />
               )}
               
@@ -273,6 +304,7 @@ const CareHistory = () => {
                   stroke="#2196F3" 
                   activeDot={{ r: 8 }} 
                   strokeWidth={2}
+                  dot={false}
                 />
               )}
               
@@ -284,20 +316,21 @@ const CareHistory = () => {
                   stroke="#FFC107" 
                   activeDot={{ r: 8 }} 
                   strokeWidth={2}
+                  dot={false}
                 />
               )}
             </LineChart>
           </ResponsiveContainer>
-        ) : (
+        ) : !loading && !error ? (
           <NoDataMessage>No historical data available yet.</NoDataMessage>
-        )}
+        ) : null}
       </ChartContainer>
       
       <ActivityLogContainer>
         <ActivityLogTitle>Recent Care Activities</ActivityLogTitle>
         
         <ActivityList>
-          {plant.careHistory.length > 0 ? (
+          {plant?.careHistory?.length > 0 ? (
             plant.careHistory.slice(0, 5).map((activity, index) => (
               <ActivityItem key={index}>
                 <ActivityIcon>

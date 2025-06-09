@@ -14,7 +14,16 @@ const [currentData, setCurrentData] = useState({
   lastUpdated: null
 });
 
-  
+  const estimateLightFromTimestamp = (timestamp) => {
+    const hour = new Date(timestamp).getHours();
+
+    if (hour >= 6 && hour < 9) return 30;   // early morning
+    if (hour >= 9 && hour < 12) return 60;  // morning
+    if (hour >= 12 && hour < 16) return 85; // afternoon (peak light)
+    if (hour >= 16 && hour < 18) return 50; // late afternoon
+    if (hour >= 18 && hour < 20) return 20; // sunset time
+    return 5;                               // night time
+  };  
   const [historicalData, setHistoricalData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -32,7 +41,7 @@ const [currentData, setCurrentData] = useState({
       soilMoisture: Math.round(liveData?.soil?.percent ?? 0),
       temperature: Math.round((liveData?.temperature?.value ?? 0) * 10) / 10,
       humidity: Math.round(liveData?.humidity?.value ?? 0),
-      light: 65, // still hardcoded unless you have real light data
+      light: estimateLightFromTimestamp(Date.now()), 
       lastUpdated: new Date()
     };
 
@@ -93,7 +102,10 @@ const [currentData, setCurrentData] = useState({
       .filter(entry => new Date(entry.timestamp) >= cutoff)
       .map(entry => ({
         timestamp: entry.timestamp,
-        soilMoisture: entry.soilMoisture // ← should match your parsed object key
+        soilMoisture: entry.soilMoisture,
+        temperature: entry.temperature,
+        humidity: entry.humidity,
+        light: estimateLightFromTimestamp(entry.timestamp)
       }));
 
     setHistoricalData(filtered);
@@ -204,9 +216,8 @@ const [currentData, setCurrentData] = useState({
   
   // Initial data fetch on mount
   useEffect(() => {
-    fetchCurrentData(); // ✅ Fetch immediately
-    //const interval = setInterval(fetchCurrentData, refreshInterval);
-    //return () => clearInterval(interval);
+    fetchCurrentData();
+    fetchHistoricalData(); // ✅ this is what actually loads the light values you expect
   }, [fetchCurrentData, fetchHistoricalData]);
   
   // Function to manually refresh data
