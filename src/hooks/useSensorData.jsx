@@ -205,9 +205,9 @@ const [currentData, setCurrentData] = useState({
   // Initial data fetch on mount
   useEffect(() => {
     fetchCurrentData(); // ✅ Fetch immediately
-    const interval = setInterval(fetchCurrentData, refreshInterval);
-    return () => clearInterval(interval);
-  }, [fetchCurrentData, fetchHistoricalData, refreshInterval]);
+    //const interval = setInterval(fetchCurrentData, refreshInterval);
+    //return () => clearInterval(interval);
+  }, [fetchCurrentData, fetchHistoricalData]);
   
   // Function to manually refresh data
   const refreshData = () => {
