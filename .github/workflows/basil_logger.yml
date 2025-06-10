@@ -33,6 +33,6 @@ jobs:
           #echo "${{ secrets.FIREBASE_KEY_JSON }}" > firebase-key.json
       - name: Decode and write Firebase key
         run: |
-          printf '%s' "${{ secrets.FIREBASE_KEY_JSON }}" > firebase-key.json
+          echo '${{ secrets.FIREBASE_KEY_JSON }}' > firebase-key.json
       - name: Run basil logger
         run: python log_basil_data.py
