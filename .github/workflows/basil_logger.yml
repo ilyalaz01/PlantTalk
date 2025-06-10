@@ -33,6 +33,5 @@ jobs:
       # printf '%s' "${{ secrets.FIREBASE_KEY_JSON }}" > firebase-key.json
       - name: Create Firebase service account key
         run: |
-          echo "$FIREBASE_KEY_JSON" > firebase-key.json
-          
+          echo "$FIREBASE_KEY_JSON" > base64 -w 0 firebase-key.json
           python log_basil_data.py
