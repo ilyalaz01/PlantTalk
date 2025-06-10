@@ -32,5 +32,5 @@ jobs:
       #    python log_basil_data.py
       - name: Create Firebase service account key
         run: |
-          echo "${{ secrets.FIREBASE_KEY_JSON }}" > firebase-key.json
+          printf '%s' "${{ secrets.FIREBASE_KEY_JSON }}" > firebase-key.json
           python log_basil_data.py
