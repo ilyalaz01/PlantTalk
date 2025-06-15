@@ -114,7 +114,7 @@ export const SensorProvider = ({ children }) => {
   // Auto-refresh on mount and interval
   useEffect(() => {
     refreshSensorData();
-    const interval = setInterval(refreshSensorData, 30000);
+    const interval = setInterval(refreshSensorData, 9900000);
     return () => clearInterval(interval);
   }, []);
 

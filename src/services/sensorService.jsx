@@ -1,20 +1,207 @@
-// src/services/sensorService.jsx
+// src/services/sensorService.jsx - FINAL VERSION with string timestamp support
 
 import { fetchWithAuth } from './api';
+import { 
+  db, 
+  auth,
+  Timestamp 
+} from './firebase';
+import { 
+  collection, 
+  query, 
+  orderBy, 
+  limit, 
+  getDocs
+} from 'firebase/firestore';
 
-// ==== Cloud API Requests (if applicable in your system) ====
+// HARDCODED: The user ID where sensor data actually exists
+const SENSOR_DATA_USER_ID = 'l1YnCXx3HMbfBwexMGOvesRK6Bv2';
 
-// Get latest sensor readings
+// ==== Temperature Validation Functions ====
+
+const validateTemperature = (temp, recordId = 'unknown') => {
+  const originalTemp = temp;
+  let correctedTemp = Number(temp);
+  let wasFixed = false;
+  
+  if (correctedTemp > 50) {
+    console.warn(`🌡️ SUSPICIOUS: Temperature ${correctedTemp}°C is too high for basil`);
+    
+    if (correctedTemp > 60 && correctedTemp < 120) {
+      const fahrenheitToCelsius = (correctedTemp - 32) * 5/9;
+      if (fahrenheitToCelsius >= 10 && fahrenheitToCelsius <= 40) {
+        correctedTemp = fahrenheitToCelsius;
+        wasFixed = true;
+        console.log(`✅ FIXED: Converted ${originalTemp}°F to ${correctedTemp.toFixed(1)}°C`);
+      }
+    }
+    
+    if (correctedTemp > 40) {
+      correctedTemp = 25;
+      wasFixed = true;
+    }
+  }
+  
+  if (correctedTemp < -10) {
+    correctedTemp = 20;
+    wasFixed = true;
+  }
+  
+  if (isNaN(correctedTemp)) {
+    correctedTemp = 22;
+    wasFixed = true;
+  }
+  
+  return Number(correctedTemp.toFixed(1));
+};
+
+const validateSensorReading = (reading, recordId) => {
+  return {
+    ...reading,
+    temperature: validateTemperature(reading.temperature, recordId),
+    soilMoisture: Math.max(0, Math.min(100, Number(reading.soilMoisture) || 0)),
+    humidity: Math.max(0, Math.min(100, Number(reading.humidity) || 0)),
+    light: Math.max(0, Math.min(100, Number(reading.light) || 65))
+  };
+};
+
+// ==== FINAL Firebase Sensor History with String Timestamp Support ====
+
+export const fetchFirebaseSensorHistory = async (userId = null, plantId = 'basilPlant1', days = 7) => {
+  try {
+    const dataUserId = SENSOR_DATA_USER_ID;
+    
+    console.log(`📊 Fetching sensor data from: /users/${dataUserId}/plants/${plantId}/logs (last ${days} days)`);
+
+    // Query Firebase logs subcollection - get recent data and filter in JavaScript
+    const logsRef = collection(db, 'users', dataUserId, 'plants', plantId, 'logs');
+    const q = query(
+      logsRef,
+      limit(200) // Get more data to filter client-side
+    );
+
+    console.log('📊 Executing Firebase query...');
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      console.log('📊 No sensor data found in Firebase subcollection');
+      return [];
+    }
+
+    console.log(`📊 Found ${querySnapshot.size} documents in Firebase subcollection`);
+
+    // Process documents and filter by date in JavaScript (since timestamps are strings)
+    const sensorData = [];
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    
+    console.log(`📅 Filtering for data newer than: ${cutoffDate.toISOString()}`);
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      
+      try {
+        // Handle string timestamps
+        let timestamp;
+        if (typeof data.timestamp === 'string') {
+          timestamp = new Date(data.timestamp);
+        } else if (data.timestamp?.toDate) {
+          timestamp = data.timestamp.toDate();
+        } else {
+          timestamp = new Date(data.timestamp);
+        }
+        
+        // Filter by date in JavaScript
+        if (timestamp < cutoffDate) {
+          console.log(`📅 Skipping old record: ${timestamp.toISOString()}`);
+          return;
+        }
+        
+        // Validate required fields
+        if (data.soilMoisture === undefined || data.temperature === undefined || data.humidity === undefined) {
+          console.warn('📊 Skipping record with missing sensor data:', doc.id);
+          return;
+        }
+
+        // Create and validate reading
+        const rawReading = {
+          id: doc.id,
+          timestamp: timestamp.toISOString(),
+          soilMoisture: Number(data.soilMoisture),
+          temperature: Number(data.temperature),
+          humidity: Number(data.humidity),
+          light: Number(data.light) || 65,
+          isHealthy: data.isHealthy || false
+        };
+
+        const validatedReading = validateSensorReading(rawReading, doc.id);
+        
+        // Final range check
+        if (validatedReading.soilMoisture >= 0 && validatedReading.soilMoisture <= 100 &&
+            validatedReading.temperature >= -10 && validatedReading.temperature <= 50 &&
+            validatedReading.humidity >= 0 && validatedReading.humidity <= 100) {
+          sensorData.push(validatedReading);
+        }
+
+      } catch (error) {
+        console.warn('📊 Error processing sensor record:', doc.id, error);
+      }
+    });
+
+    console.log(`📊 Successfully processed ${sensorData.length} recent sensor records`);
+    
+    // Sort by timestamp (oldest first)
+    sensorData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    
+    // Log data summary
+    if (sensorData.length > 0) {
+      const temps = sensorData.map(d => d.temperature);
+      const moisture = sensorData.map(d => d.soilMoisture);
+      console.log(`🌡️ Temperature range: ${Math.min(...temps).toFixed(1)}°C - ${Math.max(...temps).toFixed(1)}°C`);
+      console.log(`💧 Moisture range: ${Math.min(...moisture).toFixed(1)}% - ${Math.max(...moisture).toFixed(1)}%`);
+      console.log(`📅 Date range: ${new Date(sensorData[0].timestamp).toLocaleDateString()} - ${new Date(sensorData[sensorData.length-1].timestamp).toLocaleDateString()}`);
+    }
+    
+    return sensorData;
+
+  } catch (error) {
+    console.error('📊 Error fetching Firebase sensor history:', error);
+    return [];
+  }
+};
+
+// ==== Main Functions ====
+
+export const fetchSensorHistory = async (days = 7) => {
+  try {
+    console.log(`📊 fetchSensorHistory called for ${days} days - using Firebase with string timestamp support`);
+    
+    const firebaseData = await fetchFirebaseSensorHistory(null, 'basilPlant1', days);
+    
+    if (firebaseData && firebaseData.length > 0) {
+      console.log(`📊 ✅ Firebase returned ${firebaseData.length} records with proper timestamp filtering`);
+      return firebaseData;
+    }
+
+    console.warn('📊 No recent Firebase sensor data available');
+    return [];
+
+  } catch (error) {
+    console.error('📊 fetchSensorHistory error:', error);
+    return [];
+  }
+};
+
+// ==== Other existing functions (unchanged) ====
+
 export const fetchSensorData = async (plantId) => {
   return fetchWithAuth(`/plants/${plantId}/sensors/current`);
 };
 
-// Get historical sensor data from backend
 export const fetchBackendSensorHistory = async (plantId, options = {}) => {
   const { startDate, endDate, interval } = options;
   let url = `/plants/${plantId}/sensors/history`;
 
-  // Add query parameters if provided
   const params = new URLSearchParams();
   if (startDate) params.append('startDate', startDate.toISOString());
   if (endDate) params.append('endDate', endDate.toISOString());
@@ -27,143 +214,14 @@ export const fetchBackendSensorHistory = async (plantId, options = {}) => {
   return fetchWithAuth(url);
 };
 
-// Calculate health metrics based on sensor data
 export const calculateHealthMetrics = async (plantId) => {
   return fetchWithAuth(`/plants/${plantId}/health-metrics`);
 };
 
-// Predict optimal care schedule
 export const predictCareSchedule = async (plantId) => {
   return fetchWithAuth(`/plants/${plantId}/care-predictions`);
 };
 
-// Get soil moisture depletion rate
 export const getSoilMoistureDepletion = async (plantId) => {
   return fetchWithAuth(`/plants/${plantId}/moisture-depletion`);
-};
-
-// ==== Google Sheets Sensor History (CORS-friendly version) ====
-
-const SHEET_ID = '1kRgZwsISHOaA0EtDxQPibWbpdy-TMQnD7nsmjhAXNWo';
-
-export const fetchSensorHistory = async () => {
-  try {
-    // Use CSV export which is more CORS-friendly than JSON API
-    const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
-    
-    // Add mode: 'cors' to handle CORS properly
-    const response = await fetch(csvUrl, {
-      method: 'GET',
-      mode: 'cors',
-      headers: {
-        'Accept': 'text/csv,text/plain,*/*',
-        'Cache-Control': 'no-cache'
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    const csvText = await response.text();
-    console.log('CSV Response received:', csvText.substring(0, 200));
-    
-    // Parse CSV data
-    const lines = csvText.trim().split('\n');
-    if (lines.length <= 1) {
-      throw new Error('No data rows found in CSV');
-    }
-    
-    // Skip header row and parse data
-    const dataRows = lines.slice(1).map((line, index) => {
-      try {
-        // Handle CSV with potential commas in values
-        const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(',');
-        const cleanValues = values.map(val => val.replace(/"/g, '').trim());
-        
-        const [timestamp, moisture, temperature, humidity] = cleanValues;
-        
-        if (!timestamp || !moisture || !temperature || !humidity) {
-          console.warn(`Skipping row ${index + 2}: missing data`, cleanValues);
-          return null;
-        }
-        
-        const parsedData = {
-          timestamp: new Date(timestamp),
-          soilMoisture: parseFloat(moisture),
-          temperature: parseFloat(temperature),
-          humidity: parseFloat(humidity),
-          light: 65
-        };
-        
-        // Validate parsed data
-        if (isNaN(parsedData.timestamp.getTime()) || 
-            isNaN(parsedData.soilMoisture) || 
-            isNaN(parsedData.temperature) || 
-            isNaN(parsedData.humidity)) {
-          console.warn(`Skipping row ${index + 2}: invalid data`, parsedData);
-          return null;
-        }
-        
-        return parsedData;
-      } catch (error) {
-        console.warn(`Error parsing row ${index + 2}:`, error, line);
-        return null;
-      }
-    }).filter(row => row !== null);
-    
-    console.log(`Successfully parsed ${dataRows.length} rows from CSV`);
-    return dataRows;
-    
-  } catch (error) {
-    console.error('Error fetching sensor history:', error);
-    
-    // If CORS is still blocking, try using a CORS proxy (not recommended for production)
-    if (error.message.includes('CORS') || error instanceof TypeError) {
-      console.warn('CORS error detected. Falling back to alternative method...');
-      
-      try {
-        // Alternative: Try the JSON API with a CORS proxy (use sparingly)
-        const proxyUrl = 'https://api.allorigins.win/get?url=';
-        const targetUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=0`;
-        const proxiedUrl = proxyUrl + encodeURIComponent(targetUrl);
-        
-        const proxyResponse = await fetch(proxiedUrl);
-        const proxyData = await proxyResponse.json();
-        
-        if (proxyData.contents) {
-          const text = proxyData.contents;
-          const jsonStart = text.indexOf('(') + 1;
-          const jsonEnd = text.lastIndexOf(')');
-          const jsonString = text.substring(jsonStart, jsonEnd);
-          const json = JSON.parse(jsonString);
-          
-          if (json.table && json.table.rows) {
-            return json.table.rows.map(row => {
-              const cells = row.c || [];
-              const [timestampCell, moistureCell, temperatureCell, humidityCell] = cells;
-              
-              if (!timestampCell || !moistureCell || !temperatureCell || !humidityCell) {
-                return null;
-              }
-              
-              return {
-                timestamp: new Date(timestampCell.v),
-                soilMoisture: Number(moistureCell.v),
-                temperature: Number(temperatureCell.v),
-                humidity: Number(humidityCell.v),
-                light: 65,
-              };
-            }).filter(row => row !== null);
-          }
-        }
-      } catch (proxyError) {
-        console.error('Proxy method also failed:', proxyError);
-      }
-    }
-    
-    // Return empty array instead of throwing
-    console.warn('Returning empty array due to fetch failure');
-    return [];
-  }
 };
