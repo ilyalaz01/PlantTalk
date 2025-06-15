@@ -11,9 +11,10 @@ import useSensorData from '../hooks/useSensorData';
 import { usePlant } from '../contexts/PlantContext';
 
 const DashboardContainer = styled.div`
-  max-width: 800px;
+  max-width: 1000px;
   margin: 0 auto;
   padding: ${({ theme }) => theme.spacing.xl};
+  width: 100%;
 
   @media (max-width: 768px) {
     padding: ${({ theme }) => theme.spacing.lg} ${({ theme }) => theme.spacing.md};
@@ -91,9 +92,20 @@ const ActionSection = styled.div`
 
 const BottomSection = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(300px, 1fr) minmax(280px, 1fr);
   gap: ${({ theme }) => theme.spacing.xl};
   margin-top: ${({ theme }) => theme.spacing.xl};
+  width: 100%;
+  
+  /* Ensure both items have adequate minimum width */
+  > * {
+    min-width: 0; /* Allows items to shrink below content size when needed */
+  }
+  
+  @media (max-width: 1200px) {
+    grid-template-columns: 1fr 1fr;
+    gap: ${({ theme }) => theme.spacing.lg};
+  }
   
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
@@ -104,6 +116,10 @@ const BottomSection = styled.div`
   @media (max-width: 480px) {
     gap: ${({ theme }) => theme.spacing.md};
     margin-top: ${({ theme }) => theme.spacing.md};
+  }
+  
+  @media (max-width: 360px) {
+    gap: ${({ theme }) => theme.spacing.sm};
   }
 `;
 
