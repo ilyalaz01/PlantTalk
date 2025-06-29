@@ -30,7 +30,9 @@ jobs:
       #  run: |
       #    echo "$GOOGLE_CREDENTIALS_JSON" > credentials.json
       #    python log_basil_data.py
-      - name: Create Firebase service account key
+          #echo "${{ secrets.FIREBASE_KEY_JSON }}" > firebase-key.json
+      - name: Decode and write Firebase key
         run: |
-          echo "${{ secrets.FIREBASE_KEY_JSON }}" > firebase-key.json
-          python log_basil_data.py
+          echo '${{ secrets.FIREBASE_KEY_JSON }}' > firebase-key.json
+      - name: Run basil logger
+        run: python log_basil_data.py

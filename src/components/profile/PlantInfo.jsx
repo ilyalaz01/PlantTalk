@@ -1,7 +1,7 @@
-// src/components/profile/PlantInfo.js
+// src/components/profile/PlantInfo.jsx - Fixed Age Calculation
 import React from 'react';
 import styled from 'styled-components';
-import { usePlant } from '../../contexts/PlantContext';
+import { useAuth } from '../../contexts/AuthContext';
 import useEcologicalModel from '../../hooks/useEcologicalModel';
 import useSensorData from '../../hooks/useSensorData';
 
@@ -159,16 +159,68 @@ const getStatusDetails = (status) => {
 };
 
 const PlantInfo = () => {
-  const { plant } = usePlant();
+  const { plant, user } = useAuth();
   const ecologicalModel = useEcologicalModel(useSensorData());
 
   const statusDetails = getStatusDetails(ecologicalModel.plantStatus);
+  
   const formatDate = (date) => {
+    if (!date) return 'Unknown';
     return new Date(date).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  // Calculate age consistently (same logic as PlantManagement)
+  const calculateAge = () => {
+    if (!plant) return 'Unknown';
+    
+    let startDate;
+    
+    // If user specified age during creation, use planted date
+    if (plant.plantedDate) {
+      startDate = plant.plantedDate.toDate ? plant.plantedDate.toDate() : new Date(plant.plantedDate);
+    } 
+    // If user specified age number/unit, calculate from that
+    else if (plant.ageNumber && plant.ageUnit) {
+      const now = new Date();
+      let daysToSubtract = plant.ageNumber;
+      
+      switch (plant.ageUnit) {
+        case 'weeks':
+          daysToSubtract = plant.ageNumber * 7;
+          break;
+        case 'months':
+          daysToSubtract = plant.ageNumber * 30;
+          break;
+        default: // days
+          daysToSubtract = plant.ageNumber;
+      }
+      
+      startDate = new Date(now.getTime() - (daysToSubtract * 24 * 60 * 60 * 1000));
+    }
+    // Fallback to creation date
+    else if (plant.createdAt) {
+      startDate = plant.createdAt.toDate ? plant.createdAt.toDate() : new Date(plant.createdAt);
+    } 
+    else {
+      return 'Unknown';
+    }
+    
+    const now = new Date();
+    const diffTime = Math.abs(now - startDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return '1 day';
+    if (diffDays < 30) return `${diffDays} days`;
+    if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      return months === 1 ? '1 month' : `${months} months`;
+    }
+    const years = Math.floor(diffDays / 365);
+    return years === 1 ? '1 year' : `${years} years`;
   };
   
   return (
@@ -176,8 +228,8 @@ const PlantInfo = () => {
       <InfoHeader>
         <ProfileImage>🌿</ProfileImage>
         <NameSection>
-          <PlantName>{plant.name}</PlantName>
-          <PlantSpecies>{plant.species}</PlantSpecies>
+          <PlantName>{plant?.name || 'My Basil'}</PlantName>
+          <PlantSpecies>{plant?.species || 'Unknown Basil Variety'}</PlantSpecies>
         </NameSection>
         <StatusBadge status={ecologicalModel.plantStatus}>
           <StatusIcon>{statusDetails.icon}</StatusIcon>
@@ -188,49 +240,60 @@ const PlantInfo = () => {
       <DetailsList>
         <DetailItem>
           <DetailLabel>Age</DetailLabel>
-          <DetailValue>{plant.age}</DetailValue>
+          <DetailValue>{calculateAge()}</DetailValue>
         </DetailItem>
         <DetailItem>
-          <DetailLabel>Last Watered</DetailLabel>
-          <DetailValue>{formatDate(plant.lastWatered)}</DetailValue>
+          <DetailLabel>Plant Parent</DetailLabel>
+          <DetailValue>{user?.displayName || 'Basil Parent'}</DetailValue>
         </DetailItem>
         <DetailItem>
           <DetailLabel>Care Streak</DetailLabel>
-          <DetailValue>{plant.streak} days</DetailValue>
+          <DetailValue>{user?.streakCount || 0} days</DetailValue>
+        </DetailItem>
+        <DetailItem>
+          <DetailLabel>Location</DetailLabel>
+          <DetailValue>{plant?.location || 'Not specified'}</DetailValue>
         </DetailItem>
       </DetailsList>
       
-    <CareInfoList>
-      <CareInfoTitle>Environment Status</CareInfoTitle>
+      <CareInfoList>
+        <CareInfoTitle>Environment Status</CareInfoTitle>
 
-      <CareInfoItem>
-        <CareInfoIcon>💧</CareInfoIcon>
-        <CareInfoText>
-          Moisture level is <strong>{ecologicalModel.environmentalHealth.moisture}</strong>
-        </CareInfoText>
-      </CareInfoItem>
+        <CareInfoItem>
+          <CareInfoIcon>💧</CareInfoIcon>
+          <CareInfoText>
+            Moisture level is <strong>{ecologicalModel.environmentalHealth.moisture}</strong>
+          </CareInfoText>
+        </CareInfoItem>
 
-      <CareInfoItem>
-        <CareInfoIcon>☀️</CareInfoIcon>
-        <CareInfoText>
-          Light level is <strong>{ecologicalModel.environmentalHealth.light}</strong>
-        </CareInfoText>
-      </CareInfoItem>
+        <CareInfoItem>
+          <CareInfoIcon>☀️</CareInfoIcon>
+          <CareInfoText>
+            Light level is <strong>{ecologicalModel.environmentalHealth.light}</strong>
+          </CareInfoText>
+        </CareInfoItem>
 
-      <CareInfoItem>
-        <CareInfoIcon>🌡️</CareInfoIcon>
-        <CareInfoText>
-          Temperature is <strong>{ecologicalModel.environmentalHealth.temperature}</strong>
-        </CareInfoText>
-      </CareInfoItem>
+        <CareInfoItem>
+          <CareInfoIcon>🌡️</CareInfoIcon>
+          <CareInfoText>
+            Temperature is <strong>{ecologicalModel.environmentalHealth.temperature}</strong>
+          </CareInfoText>
+        </CareInfoItem>
 
-      <CareInfoItem>
-        <CareInfoIcon>💦</CareInfoIcon>
-        <CareInfoText>
-          Humidity is <strong>{ecologicalModel.environmentalHealth.humidity}</strong>
-        </CareInfoText>
-      </CareInfoItem>
-    </CareInfoList>
+        <CareInfoItem>
+          <CareInfoIcon>💦</CareInfoIcon>
+          <CareInfoText>
+            Humidity is <strong>{ecologicalModel.environmentalHealth.humidity}</strong>
+          </CareInfoText>
+        </CareInfoItem>
+      </CareInfoList>
+      
+      {plant?.notes && (
+        <CareInfoList>
+          <CareInfoTitle>Notes</CareInfoTitle>
+          <CareInfoText>{plant.notes}</CareInfoText>
+        </CareInfoList>
+      )}
     </InfoContainer>
   );
 };

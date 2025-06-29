@@ -150,7 +150,7 @@ export const PlantProvider = ({ children }) => {
     // poll for updated sensor data
     const interval = setInterval(() => {
       refreshPlantData();
-    }, 60000); // Refresh every minute
+    }, 90000000); // Refresh every minute
     
     return () => clearInterval(interval);
   }, []);

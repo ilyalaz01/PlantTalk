@@ -138,6 +138,11 @@ useEffect(() => {
   const interval = setInterval(refreshSensorData, 30000);
   return () => clearInterval(interval);
 }, []);
+//  useEffect(() => {
+//    refreshSensorData();
+//    const interval = setInterval(refreshSensorData, 9900000);
+//    return () => clearInterval(interval);
+//  }, []);
 
   const value = {
     sensorData,
