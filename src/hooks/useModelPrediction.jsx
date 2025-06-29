@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 
-const MODEL_API_URL = "https://basil-pca-api-production.up.railway.app/predict"; // use relative URL if using Vercel + FastAPI proxying
+const MODEL_API_URL = `${import.meta.env.VITE_API_URL}/predict`; // use relative URL if using Vercel + FastAPI proxying
 
 const useModelPrediction = (sensorData) => {
   const [prediction, setPrediction] = useState(null);
@@ -26,6 +26,11 @@ const useModelPrediction = (sensorData) => {
     const fetchPrediction = async () => {
       try {
         const response = await axios.post(MODEL_API_URL, payload);
+
+        if (!response?.data || !response.data.status) {
+          throw new Error("Prediction response malformed");
+        }
+
         setPrediction(response.data.status);
         setPcaInfo({
           components: response.data.pca_components,
@@ -33,6 +38,8 @@ const useModelPrediction = (sensorData) => {
         });
       } catch (error) {
         console.error("Prediction error:", error);
+        setPrediction('Unavailable');
+        setPcaInfo(null);
       }
     };
 

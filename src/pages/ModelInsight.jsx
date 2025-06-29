@@ -176,6 +176,9 @@ const ModelInsights = () => {
                 <span key={i}><strong>PC{i+1}:</strong> {(v * 100).toFixed(1)}% </span>
               )) || 'N/A'}
             </StatItem>
+            <StatItem>
+              Diagnosis: <strong>{prediction ?? 'Unavailable'}</strong>
+            </StatItem>
           </>
         )}
         <small>Powered by: PCA + Decision Tree Model</small>
