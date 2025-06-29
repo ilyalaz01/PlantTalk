@@ -4,7 +4,16 @@ import { fetchSensorData, fetchSensorHistory } from '../services/sensorService';
 import { usePlant } from './PlantContext';
 
 const SensorContext = createContext();
+const estimateLightFromTimestamp = (timestamp) => {
+  const hour = new Date(timestamp).getHours();
 
+  if (hour >= 6 && hour < 9) return 30;   // early morning
+  if (hour >= 9 && hour < 12) return 60;  // morning
+  if (hour >= 12 && hour < 16) return 85; // afternoon (peak light)
+  if (hour >= 16 && hour < 18) return 50; // late afternoon
+  if (hour >= 18 && hour < 20) return 20; // sunset time
+  return 5;                               // night time
+};
 export const useSensor = () => {
   const context = useContext(SensorContext);
   if (!context) {
@@ -17,25 +26,33 @@ export const SensorProvider = ({ children }) => {
   const { updatePlantStatus } = usePlant();
   
   // Initial mock state (will be replaced by real sensor data soon)
-  const [sensorData, setSensorData] = useState({
-    soilMoisture: 45,      // %
-    temperature: 22,       // °C
-    humidity: 55,          // %
-    light: 65,             // %
-    lastUpdated: new Date(),
-  });
+  //const [sensorData, setSensorData] = useState({
+  //  soilMoisture: 45,      // %
+  //  temperature: 22,       // °C
+  //  humidity: 55,          // %
+  //  light: 65,             // %
+  //  lastUpdated: new Date(),
+  //});
   
   // Mock history (replace with fetchSensorHistory for real data)
-  const [sensorHistory, setSensorHistory] = useState([
-    { timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), soilMoisture: 75, temperature: 22, humidity: 60, light: 70 },
-    { timestamp: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), soilMoisture: 68, temperature: 23, humidity: 58, light: 65 },
-    { timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), soilMoisture: 60, temperature: 24, humidity: 55, light: 60 },
-    { timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), soilMoisture: 52, temperature: 23, humidity: 54, light: 68 },
-    { timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), soilMoisture: 82, temperature: 21, humidity: 57, light: 72 },
-    { timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), soilMoisture: 75, temperature: 20, humidity: 59, light: 70 },
-    { timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), soilMoisture: 65, temperature: 22, humidity: 56, light: 65 },
-  ]);
-  
+  //const [sensorHistory, setSensorHistory] = useState([
+  //  { timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), soilMoisture: 75, temperature: 22, humidity: 60, light: 70 },
+  //  { timestamp: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), soilMoisture: 68, temperature: 23, humidity: 58, light: 65 },
+  //  { timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), soilMoisture: 60, temperature: 24, humidity: 55, light: 60 },
+  //  { timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), soilMoisture: 52, temperature: 23, humidity: 54, light: 68 },
+  //  { timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), soilMoisture: 82, temperature: 21, humidity: 57, light: 72 },
+  //  { timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), soilMoisture: 75, temperature: 20, humidity: 59, light: 70 },
+  //  { timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), soilMoisture: 65, temperature: 22, humidity: 56, light: 65 },
+  //]);
+    const [sensorData, setSensorData] = useState({
+    soilMoisture: 0,
+    temperature: 0,
+    humidity: 0,
+    light: 0,
+    lastUpdated: new Date(),
+  });
+  const [sensorHistory, setSensorHistory] = useState([]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -43,29 +60,19 @@ export const SensorProvider = ({ children }) => {
   const refreshSensorData = async () => {
     try {
       setLoading(true);
-      
-      // Uncomment when real API is ready:
-      // const data = await fetchSensorData();
-      // setSensorData({
-      //   soilMoisture: data.soilMoisture,
-      //   temperature: data.temperature, // already in °C
-      //   humidity: data.humidity,
-      //   light: data.light,
-      //   lastUpdated: new Date(data.timestamp),
-      // });
-      
+
       // --- MOCK: simulate sensor changes ---
-      const newSoilMoisture = Math.max(5, sensorData.soilMoisture - Math.random() * 2);
-      const newTemperature = sensorData.temperature + (Math.random() * 1 - 0.5);
-      const newHumidity = Math.max(30, Math.min(80, sensorData.humidity + (Math.random() * 3 - 1.5)));
-      const newLight = Math.max(10, Math.min(90, sensorData.light + (Math.random() * 5 - 2.5)));
-      
+      //const newSoilMoisture = Math.max(5, sensorData.soilMoisture - Math.random() * 2);
+      //const newTemperature = sensorData.temperature + (Math.random() * 1 - 0.5);
+      //const newHumidity = Math.max(30, Math.min(80, sensorData.humidity + (Math.random() * 3 - 1.5)));
+      //const newLight = Math.max(10, Math.min(90, sensorData.light + (Math.random() * 5 - 2.5)));
+      const data = await fetchSensorData();
       const newData = {
-        soilMoisture: Math.round(newSoilMoisture),
-        temperature: Math.round(newTemperature * 10) / 10,
-        humidity: Math.round(newHumidity),
-        light: Math.round(newLight),
-        lastUpdated: new Date(),
+        soilMoisture: data.soilMoisture,
+        temperature: data.temperature,
+        humidity: data.humidity,
+        light: estimateLightFromTimestamp(data.timestamp),
+        lastUpdated: new Date(data.timestamp),
       };
       
       setSensorData(newData);
@@ -112,11 +119,25 @@ export const SensorProvider = ({ children }) => {
   };
 
   // Auto-refresh on mount and interval
-  useEffect(() => {
-    refreshSensorData();
-    const interval = setInterval(refreshSensorData, 30000);
-    return () => clearInterval(interval);
-  }, []);
+useEffect(() => {
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const history = await fetchSensorHistory(); // <-- real Firebase data
+      setSensorHistory(history.reverse()); // or sort it by timestamp if needed
+    } catch (err) {
+      console.error('Error fetching sensor history:', err);
+      setError('לא ניתן לטעון היסטוריה של חיישנים');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadData();
+
+  const interval = setInterval(refreshSensorData, 30000);
+  return () => clearInterval(interval);
+}, []);
 
   const value = {
     sensorData,
