@@ -99,7 +99,7 @@ const getStatusMessage = (type, value) => {
       
     case 'temperature':
       if (value < 18) return 'Too Cold';
-      if (value > 24) return 'Too Hot';
+      if (value > 28) return 'Too Hot';
       return 'Perfect';
       
     case 'humidity':
@@ -141,7 +141,7 @@ const getStatus = (type, value) => {
       
     case 'temperature':
       if (value < 18) return 'low';
-      if (value > 24) return 'high';
+      if (value > 28) return 'high';
       return 'optimal';
       
     case 'humidity':
