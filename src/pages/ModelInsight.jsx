@@ -213,7 +213,7 @@ const ModelInsights = () => {
         </StatItem>
 
         <img
-          src="public\\3d_pca_biplot.png"
+          src="3d_pca_biplot.png"
           alt="PCA cluster plot with your plant marked"
           style={{ width: '100%', borderRadius: '8px', marginTop: '12px' }}
         />
@@ -230,7 +230,7 @@ const ModelInsights = () => {
             Shows how much each sensor influences the model's decision along the top 3 PCA directions.
           </StatItem>
           <img
-            src="public\variable contribution to pca.png"
+            src="variable contribution to pca.png"
             alt="PCA variable contribution heatmap"
             style={{ width: '100%', borderRadius: '8px', marginTop: '12px' }}
           />
@@ -242,7 +242,7 @@ const ModelInsights = () => {
             Shows how different environmental conditions affect each other (e.g., humidity vs. temperature).
           </StatItem>
           <img
-            src="public\correlation_matrix_sensor_data.png"
+            src="correlation_matrix_sensor_data.png"
             alt="Sensor data correlation heatmap"
             style={{ width: '100%', borderRadius: '8px', marginTop: '12px' }}
           />
