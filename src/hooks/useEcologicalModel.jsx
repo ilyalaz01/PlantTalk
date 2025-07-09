@@ -40,7 +40,11 @@ const useEcologicalModel = (sensorDataHook) => {
       status = 'thirsty';
     } else if (moisture > 75 && (humidity > 75 || temp < 20)) {
       status = 'overwatered';
-    } else if (moisture >= 40 && moisture <= 70 && temp >= 21 && temp <= 30 && humidity >= 40 && humidity <= 70) {
+    } else if (
+      moisture >= 40 && moisture <= 70 &&
+      temp >= 21 && temp <= 30 &&
+      humidity >= 40 && humidity <= 70
+    ) {
       status = 'healthy';
     } else {
       status = 'stressed';
@@ -93,7 +97,9 @@ const useEcologicalModel = (sensorDataHook) => {
     const daysUntil = (sensorData.soilMoisture - 30) / Math.abs(depletionRate);
     
     // Ensure we don't show negative days
-    setDaysUntilWaterNeeded(Math.max(0, daysUntil));
+    //setDaysUntilWaterNeeded(Math.max(0, daysUntil));
+    const roundedDays = Math.max(0, daysUntil);
+    setDaysUntilWaterNeeded(Number(roundedDays.toFixed(3)));
   };
   
   // Weather integration model - adjust recommendations based on weather

@@ -152,15 +152,29 @@ const ModelInsights = () => {
 
       <h2>Ecological Model Insights</h2>
       <Section>
-        <SectionTitle>🌱 Plant Status</SectionTitle>
+        <SectionTitle>🌱 Rule-Based Status (Real-Time)</SectionTitle>
+        <p style={{ fontStyle: 'italic', color: '#666', marginBottom: '0.5rem' }}>
+          Based on recent sensor values using logical thresholds. Can output: <strong>thirsty</strong>, <strong>overwatered</strong>, <strong>healthy</strong>, or <strong>stressed</strong>.
+        </p>
         <StatItem>Current Status: <strong>{plantStatus}</strong></StatItem>
+        <StatItem style={{ color: '#555', fontStyle: 'italic' }}>
+          Reason: Based on{' '}
+          {safeEnvironmentalHealth.moisture === 'low' ? 'low moisture' :
+          safeEnvironmentalHealth.temperature === 'low' ? 'low temperature' :
+          safeEnvironmentalHealth.temperature === 'high' ? 'high temperature' :
+          safeEnvironmentalHealth.moisture === 'high' ? 'high moisture' :
+          'balanced conditions'}.
+        </StatItem>
         <StatItem>Estimated Days Until Water Needed: <strong>{daysUntilWaterNeeded}</strong></StatItem>
         <StatItem>Moisture Depletion Rate: <strong>{moistureDepletionRate.toFixed(2)} %/day</strong></StatItem>
-        <small>Powered by: Combined Mechanistic & Rule-Based Models</small>
+        <small>Powered by: Mechanistic evapotranspiration + rule-based thresholds</small>
       </Section>
 
       <Section>
-        <SectionTitle>🌿 Model Diagnosis</SectionTitle>
+        <SectionTitle>🌿 ML Model Diagnosis (Last Snapshot)</SectionTitle>
+        <p style={{ fontStyle: 'italic', color: '#666', marginBottom: '0.5rem' }}>
+          Based on PCA-transformed data and a trained decision tree. Uses same labels: <strong>thirsty</strong>, <strong>overwatered</strong>, <strong>healthy</strong>, or <strong>stressed</strong>.
+        </p>
         <StatItem>
           Diagnosis: <strong>{prediction || 'Loading...'}</strong>
         </StatItem>
@@ -176,42 +190,65 @@ const ModelInsights = () => {
                 <span key={i}><strong>PC{i+1}:</strong> {(v * 100).toFixed(1)}% </span>
               )) || 'N/A'}
             </StatItem>
-            <StatItem>
-              Diagnosis: <strong>{prediction ?? 'Unavailable'}</strong>
-            </StatItem>
           </>
         )}
-        <small>Powered by: PCA + Decision Tree Model</small>
+        <small>Powered by: PCA dimensionality reduction + decision tree classifier</small>
+      </Section>
+      <Section>
+        <SectionTitle>🔍 What Influenced the ML Diagnosis?</SectionTitle>
+        <StatItem>
+          The model compares your plant’s data with past healthy and stressed examples.
+          These factors had the most impact today:
+        </StatItem>
+
+        <StatList style={{ marginTop: '0.5rem' }}>
+          <StatItem>• <strong>Humidity</strong> — key contributor to PC1 (air moisture stress)</StatItem>
+          <StatItem>• <strong>Temperature</strong> — strongly affects PC1 (heat or cold stress)</StatItem>
+          <StatItem>• <strong>Moisture</strong> — major factor in PC2 and PC3 (soil water level)</StatItem>
+          <StatItem>• <strong>Time of Day</strong> — influences plant behavior over time</StatItem>
+        </StatList>
+
+        <StatItem style={{ marginTop: '1rem' }}>
+          Your plant's data is placed in this space to estimate its condition:
+        </StatItem>
+
+        <img
+          src="public\\3d_pca_biplot.png"
+          alt="PCA cluster plot with your plant marked"
+          style={{ width: '100%', borderRadius: '8px', marginTop: '12px' }}
+        />
+      </Section>
+      <Section>
+        <SectionTitle>📊 Deeper Look at Sensor Relationships</SectionTitle>
+        <StatItem>
+          The following charts help explain how your plant's data relates to typical patterns:
+        </StatItem>
+
+        <div style={{ marginTop: '1rem' }}>
+          <strong>🔷 PCA Contributions:</strong>
+          <StatItem>
+            Shows how much each sensor influences the model's decision along the top 3 PCA directions.
+          </StatItem>
+          <img
+            src="public\variable contribution to pca.png"
+            alt="PCA variable contribution heatmap"
+            style={{ width: '100%', borderRadius: '8px', marginTop: '12px' }}
+          />
+        </div>
+
+        <div style={{ marginTop: '1.5rem' }}>
+          <strong>🔶 Sensor Correlations:</strong>
+          <StatItem>
+            Shows how different environmental conditions affect each other (e.g., humidity vs. temperature).
+          </StatItem>
+          <img
+            src="public\correlation_matrix_sensor_data.png"
+            alt="Sensor data correlation heatmap"
+            style={{ width: '100%', borderRadius: '8px', marginTop: '12px' }}
+          />
+        </div>
       </Section>
 
-      <Section>
-        <SectionTitle>📉 Soil Moisture Trend</SectionTitle>
-        {safeHistoricalData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={safeHistoricalData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="timestamp"
-                tickFormatter={(str) => {
-                  try {
-                    return new Date(str).toLocaleDateString();
-                  } catch {
-                    return str;
-                  }
-                }}
-              />
-              <YAxis domain={[0, 100]} />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="soilMoisture" stroke="#8884d8" dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        ) : (
-          <LoadingMessage>
-            {loading ? 'Loading historical data...' : 'No historical data available.'}
-          </LoadingMessage>
-        )}
-      </Section>
     </InsightsContainer>
   );
 };
